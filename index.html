@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Orders Dashboard</title>
+    <!-- Bootstrap 5 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">
+                <i class="fas fa-chart-line"></i> Orders Dashboard
+            </a>
+            <div class="d-flex align-items-center text-white">
+                <span class="badge bg-success" id="connectionStatus">
+                    <i class="fas fa-circle"></i> Connected
+                </span>
+                <small class="ms-3" id="lastUpdated">
+                    Updated: Just now
+                </small>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Container -->
+    <div class="container-fluid mt-4">
+        <!-- Stats Cards -->
+        <div class="row mb-4" id="statsCards">
+            <!-- Stats will be loaded here -->
+        </div>
+
+        <div class="row">
+            <!-- Left Column: Order Form -->
+            <div class="col-lg-4 mb-4">
+                <div class="card shadow">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">
+                            <i class="fas fa-plus-circle"></i> New Order
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <form id="orderForm">
+                            <!-- Customer Info -->
+                            <div class="mb-3">
+                                <label class="form-label">Customer Phone *</label>
+                                <input type="tel" class="form-control" id="customerPhone" 
+                                       placeholder="Enter phone number" required>
+                            </div>
+
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label class="form-label">Customer Name</label>
+                                    <input type="text" class="form-control" id="customerName" 
+                                           placeholder="Full name">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">City/Area</label>
+                                    <select class="form-control" id="locationSelect">
+                                        <option value="">Select Location</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- Order Items -->
+                            <div class="mb-3">
+                                <label class="form-label">Order Items *</label>
+                                <div class="items-container" id="itemsContainer">
+                                    <div class="item-row row g-2 mb-2">
+                                        <div class="col-md-5">
+                                            <select class="form-control product-select" required>
+                                                <option value="">Select Product</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <input type="number" class="form-control quantity" 
+                                                   value="1" min="1" step="0.01" placeholder="Qty" required>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <input type="number" class="form-control price" 
+                                                   placeholder="Price" readonly>
+                                        </div>
+                                        <div class="col-md-1">
+                                            <button type="button" class="btn btn-danger btn-sm remove-item" disabled>
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <button type="button" class="btn btn-outline-primary btn-sm mt-2" 
+                                        onclick="addItem()">
+                                    <i class="fas fa-plus"></i> Add Item
+                                </button>
+                            </div>
+
+                            <!-- Order Summary -->
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label class="form-label">Total Amount</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text">₹</span>
+                                        <input type="number" class="form-control" id="orderTotal" 
+                                               value="0" readonly>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Payment Status</label>
+                                    <select class="form-control" id="paymentStatus">
+                                        <option value="Paid">Paid</option>
+                                        <option value="Unpaid" selected>Unpaid</option>
+                                        <option value="Cash on delivery">Cash on Delivery</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- Notes -->
+                            <div class="mb-3">
+                                <label class="form-label">Notes</label>
+                                <textarea class="form-control" id="orderNotes" 
+                                          rows="2" placeholder="Any special instructions..."></textarea>
+                            </div>
+
+                            <!-- Submit Button -->
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="fas fa-save"></i> Save Order
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column: Orders Table -->
+            <div class="col-lg-8">
+                <div class="card shadow">
+                    <div class="card-header bg-dark text-white">
+                        <h5 class="mb-0">
+                            <i class="fas fa-list-check"></i> Recent Orders
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <!-- Filters -->
+                        <div class="row mb-3">
+                            <div class="col-md-3">
+                                <input type="text" class="form-control" id="searchPhone" 
+                                       placeholder="Search phone...">
+                            </div>
+                            <div class="col-md-3">
+                                <select class="form-control" id="filterStatus">
+                                    <option value="">All Status</option>
+                                    <option value="Paid">Paid</option>
+                                    <option value="Unpaid">Unpaid</option>
+                                    <option value="Cash on delivery">Cash on Delivery</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <input type="date" class="form-control" id="filterDate">
+                            </div>
+                            <div class="col-md-3">
+                                <button class="btn btn-primary w-100" onclick="loadOrders()">
+                                    <i class="fas fa-filter"></i> Filter
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Orders Table -->
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>Order ID</th>
+                                        <th>Date & Time</th>
+                                        <th>Customer</th>
+                                        <th>Items</th>
+                                        <th>Amount</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="ordersTable">
+                                    <!-- Orders will be loaded here -->
+                                    <tr>
+                                        <td colspan="7" class="text-center py-4">
+                                            <div class="spinner-border text-primary" role="status">
+                                                <span class="visually-hidden">Loading...</span>
+                                            </div>
+                                            <p class="mt-2">Loading orders...</p>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast for Notifications -->
+    <div class="toast-container position-fixed bottom-0 end-0 p-3">
+        <div id="notificationToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="toast-header">
+                <strong class="me-auto" id="toastTitle">Notification</strong>
+                <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
+            </div>
+            <div class="toast-body" id="toastMessage">
+                Message will appear here
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap & Custom JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
