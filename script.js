@@ -1,7 +1,7 @@
 // Configuration
 const CONFIG = {
-    API_BASE_URL: "https://your-render-app.onrender.com", // Render backend URL
-    // For local development: "http://localhost:5500"
+    API_BASE_URL: "https://kuswar-backend.onrender.com", // Render backend URL
+    // For test "http://localhost:5500"
 };
 
 // Global variables
