@@ -7,10 +7,12 @@ const CONFIG = {
 // Global variables
 let products = [];
 let locations = [];
+let itemsCounter = 0;
 
 // Initialize the dashboard
 async function initDashboard() {
     try {
+        console.log("Initializing dashboard...");
         showNotification("Loading dashboard...", "info");
         
         // Load all required data
@@ -32,6 +34,9 @@ async function initDashboard() {
             updateLastUpdated();
         }, 60000);
         
+        // Initialize first item row
+        addItemRow();
+        
     } catch (error) {
         console.error("Dashboard initialization error:", error);
         showNotification("Failed to load dashboard. Please refresh.", "danger");
@@ -41,11 +46,13 @@ async function initDashboard() {
 // Load products from API
 async function loadProducts() {
     try {
+        console.log("Loading products...");
         const response = await fetch(`${CONFIG.API_BASE_URL}/api/products`);
         const data = await response.json();
         
         if (data.success) {
             products = data.data;
+            console.log(`Loaded ${products.length} products`);
             populateProductDropdowns();
         } else {
             throw new Error(data.error || "Failed to load products");
@@ -59,11 +66,13 @@ async function loadProducts() {
 // Load locations from API
 async function loadLocations() {
     try {
+        console.log("Loading locations...");
         const response = await fetch(`${CONFIG.API_BASE_URL}/api/locations`);
         const data = await response.json();
         
         if (data.success) {
             locations = data.data;
+            console.log(`Loaded ${locations.length} locations`);
             populateLocationDropdown();
         } else {
             throw new Error(data.error || "Failed to load locations");
@@ -93,6 +102,7 @@ async function loadStats() {
 // Load orders with optional filters
 async function loadOrders() {
     try {
+        console.log("Loading orders...");
         // Build query parameters
         const params = new URLSearchParams();
         const phone = document.getElementById("searchPhone").value;
@@ -107,6 +117,7 @@ async function loadOrders() {
         const data = await response.json();
         
         if (data.success) {
+            console.log(`Loaded ${data.count} orders`);
             renderOrdersTable(data.data);
         } else {
             throw new Error(data.error || "Failed to load orders");
@@ -185,8 +196,8 @@ function renderOrdersTable(orders) {
             : "";
         
         const statusClass = order.PaymentStatus 
-            ? order.PaymentStatus.toLowerCase().replace(/ /g, "-")
-            : "";
+            ? order.PaymentStatus.toLowerCase().replace(/\s+/g, '-')
+            : "unknown";
         
         return `
             <tr class="fade-in">
@@ -199,7 +210,7 @@ function renderOrdersTable(orders) {
                 </td>
                 <td>
                     <div><strong>${order.CustomerName || "N/A"}</strong></div>
-                    <small class="text-muted">${order.CustomerPhone || ""}</small>
+                    <small class="text-muted">${order.Phone || ""}</small>
                     <div class="small">${order.CustomerCity || ""} ${order.CustomerArea || ""}</div>
                 </td>
                 <td>${items}</td>
@@ -225,13 +236,20 @@ function renderOrdersTable(orders) {
 
 // Populate product dropdowns
 function populateProductDropdowns() {
+    console.log("Populating product dropdowns...");
     const dropdowns = document.querySelectorAll(".product-select");
     
     dropdowns.forEach(dropdown => {
         // Clear existing options except the first one
-        const firstOption = dropdown.options[0];
-        dropdown.innerHTML = "";
-        dropdown.appendChild(firstOption);
+        while (dropdown.options.length > 0) {
+            dropdown.remove(0);
+        }
+        
+        // Add default option
+        const defaultOption = document.createElement("option");
+        defaultOption.value = "";
+        defaultOption.textContent = "Select Product";
+        dropdown.appendChild(defaultOption);
         
         // Add product options
         products.forEach(product => {
@@ -248,6 +266,17 @@ function populateProductDropdowns() {
 function populateLocationDropdown() {
     const dropdown = document.getElementById("locationSelect");
     
+    // Clear existing options except the first one
+    while (dropdown.options.length > 0) {
+        dropdown.remove(0);
+    }
+    
+    // Add default option
+    const defaultOption = document.createElement("option");
+    defaultOption.value = "";
+    defaultOption.textContent = "Select Location";
+    dropdown.appendChild(defaultOption);
+    
     locations.forEach(location => {
         const option = document.createElement("option");
         option.value = `${location.City}|${location.Area}`;
@@ -256,15 +285,16 @@ function populateLocationDropdown() {
     });
 }
 
-// Add new item row to order form
-function addItem() {
+// Add new item row
+function addItemRow() {
+    itemsCounter++;
     const container = document.getElementById("itemsContainer");
     const newRow = document.createElement("div");
     newRow.className = "item-row row g-2 mb-2";
+    newRow.id = `item-row-${itemsCounter}`;
     newRow.innerHTML = `
         <div class="col-md-5">
-            <select class="form-control product-select" required 
-                    onchange="updateItemPrice(this)">
+            <select class="form-control product-select" required>
                 <option value="">Select Product</option>
                 ${products.map(p => 
                     `<option value="${p.ProductID}" data-price="${p.UniPrice}">
@@ -275,8 +305,7 @@ function addItem() {
         </div>
         <div class="col-md-3">
             <input type="number" class="form-control quantity" 
-                   value="1" min="1" step="0.01" placeholder="Qty" required
-                   onchange="calculateTotal()">
+                   value="1" min="1" step="1" placeholder="Qty" required>
         </div>
         <div class="col-md-3">
             <input type="number" class="form-control price" 
@@ -284,40 +313,37 @@ function addItem() {
         </div>
         <div class="col-md-1">
             <button type="button" class="btn btn-danger btn-sm remove-item"
-                    onclick="removeItem(this)">
+                    onclick="removeItemRow('item-row-${itemsCounter}')">
                 <i class="fas fa-trash"></i>
             </button>
         </div>
     `;
     
     container.appendChild(newRow);
+    
+    // Add event listeners to the new row
+    const select = newRow.querySelector(".product-select");
+    const quantity = newRow.querySelector(".quantity");
+    
+    select.addEventListener("change", function() {
+        updateItemPrice(this);
+    });
+    
+    quantity.addEventListener("input", function() {
+        calculateTotal();
+    });
+    
     updateRemoveButtons();
     calculateTotal();
 }
 
 // Remove item row
-function removeItem(button) {
-    const row = button.closest(".item-row");
+function removeItemRow(rowId) {
+    const row = document.getElementById(rowId);
     if (row && document.querySelectorAll(".item-row").length > 1) {
         row.remove();
         calculateTotal();
         updateRemoveButtons();
-    }
-}
-
-// Update remove buttons state
-function updateRemoveButtons() {
-    const rows = document.querySelectorAll(".item-row");
-    const removeButtons = document.querySelectorAll(".remove-item");
-    
-    if (rows.length === 1) {
-        removeButtons[0].disabled = true;
-        removeButtons[0].classList.add("disabled");
-    } else {
-        removeButtons.forEach(btn => {
-            btn.disabled = false;
-            btn.classList.remove("disabled");
-        });
     }
 }
 
@@ -339,148 +365,181 @@ function calculateTotal() {
         total += qty * price;
     });
     
-    document.getElementById("orderTotal").value = total.toFixed(2);
+    const orderTotalInput = document.getElementById("orderTotal");
+    if (orderTotalInput) {
+        orderTotalInput.value = total.toFixed(2);
+    }
 }
 
-// Submit order form
-document.getElementById("orderForm").addEventListener("submit", async function(e) {
-    e.preventDefault();
+// Update remove buttons state
+function updateRemoveButtons() {
+    const rows = document.querySelectorAll(".item-row");
+    const removeButtons = document.querySelectorAll(".remove-item");
     
-    // Get form data
-    const phone = document.getElementById("customerPhone").value.trim();
-    const name = document.getElementById("customerName").value.trim();
-    const location = document.getElementById("locationSelect").value;
-    const paymentStatus = document.getElementById("paymentStatus").value;
-    const notes = document.getElementById("orderNotes").value.trim();
-    
-    // Validate phone
-    if (!phone) {
-        showNotification("Please enter customer phone number", "warning");
-        return;
-    }
-    
-    // Parse location
-    const [city, area] = location ? location.split("|") : ["", ""];
-    
-    // Collect items
-    const items = [];
-    let validItems = true;
-    
-    document.querySelectorAll(".item-row").forEach(row => {
-        const select = row.querySelector(".product-select");
-        const quantity = row.querySelector(".quantity").value;
-        const price = row.querySelector(".price").value;
-        
-        if (select.value && quantity && price) {
-            items.push({
-                ProductID: select.value,
-                ProductName: select.options[select.selectedIndex].text.split(" - ")[0],
-                Quantity: parseFloat(quantity),
-                UnitPrice: parseFloat(price)
-            });
-        } else {
-            validItems = false;
-        }
-    });
-    
-    if (!validItems || items.length === 0) {
-        showNotification("Please add valid items to the order", "warning");
-        return;
-    }
-    
-    // Prepare order data
-    const orderData = {
-        customer: {
-            Phone: phone,
-            Name: name || "Unknown",
-            City: city,
-            Area: area,
-            Address: "",
-            Notes: notes
-        },
-        items: items,
-        order_source: "Web Dashboard",
-        payment_status: paymentStatus,
-        notes: notes
-    };
-    
-    try {
-        // Show loading state
-        const submitBtn = e.target.querySelector('button[type="submit"]');
-        const originalText = submitBtn.innerHTML;
-        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
-        submitBtn.disabled = true;
-        
-        // Send to API
-        const response = await fetch(`${CONFIG.API_BASE_URL}/api/orders`, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify(orderData)
+    if (rows.length === 1) {
+        removeButtons.forEach(btn => {
+            btn.disabled = true;
+            btn.classList.add("disabled");
         });
-        
-        const result = await response.json();
-        
-        // Reset button
-        submitBtn.innerHTML = originalText;
-        submitBtn.disabled = false;
-        
-        if (result.success) {
-            // Show success message
-            showNotification(
-                `Order created successfully! Order ID: ${result.order_id}`, 
-                "success"
-            );
+    } else {
+        removeButtons.forEach(btn => {
+            btn.disabled = false;
+            btn.classList.remove("disabled");
+        });
+    }
+}
+
+// Form submission handler
+document.addEventListener("DOMContentLoaded", function() {
+    const orderForm = document.getElementById("orderForm");
+    
+    if (orderForm) {
+        orderForm.addEventListener("submit", async function(e) {
+            e.preventDefault();
+            e.stopPropagation();
             
-            // Reset form
-            e.target.reset();
-            document.getElementById("itemsContainer").innerHTML = `
-                <div class="item-row row g-2 mb-2">
-                    <div class="col-md-5">
-                        <select class="form-control product-select" required 
-                                onchange="updateItemPrice(this)">
-                            <option value="">Select Product</option>
-                        </select>
-                    </div>
-                    <div class="col-md-3">
-                        <input type="number" class="form-control quantity" 
-                               value="1" min="1" step="0.01" placeholder="Qty" required
-                               onchange="calculateTotal()">
-                    </div>
-                    <div class="col-md-3">
-                        <input type="number" class="form-control price" 
-                               placeholder="Price" readonly>
-                    </div>
-                    <div class="col-md-1">
-                        <button type="button" class="btn btn-danger btn-sm remove-item" disabled>
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </div>
-                </div>
-            `;
+            console.log("Submitting order...");
             
-            populateProductDropdowns();
-            calculateTotal();
+            // Validate required fields
+            const customerPhone = document.getElementById("customerPhone").value.trim();
+            if (!customerPhone) {
+                showNotification("Please enter customer phone number", "warning");
+                return;
+            }
             
-            // Refresh data
-            loadStats();
-            loadOrders();
+            // Collect items
+            const items = [];
+            let hasValidItems = false;
             
-        } else {
-            showNotification(`Error: ${result.error}`, "danger");
-        }
-        
-    } catch (error) {
-        console.error("Error submitting order:", error);
-        showNotification("Network error. Please try again.", "danger");
+            document.querySelectorAll(".item-row").forEach(row => {
+                const select = row.querySelector(".product-select");
+                const quantity = row.querySelector(".quantity").value;
+                const price = row.querySelector(".price").value;
+                
+                if (select && select.value && quantity && price) {
+                    hasValidItems = true;
+                    items.push({
+                        ProductID: select.value,
+                        ProductName: select.options[select.selectedIndex].text.split(" - ")[0],
+                        Quantity: parseFloat(quantity),
+                        UnitPrice: parseFloat(price)
+                    });
+                }
+            });
+            
+            if (!hasValidItems || items.length === 0) {
+                showNotification("Please add at least one valid item to the order", "warning");
+                return;
+            }
+            
+            // Get form data
+            const customerName = document.getElementById("customerName").value.trim() || "Unknown";
+            const location = document.getElementById("locationSelect").value;
+            const [city, area] = location ? location.split("|") : ["", ""];
+            const paymentStatus = document.getElementById("paymentStatus").value;
+            const notes = document.getElementById("orderNotes").value.trim();
+            
+            // Prepare order data
+            const orderData = {
+                customer: {
+                    Phone: customerPhone,
+                    Name: customerName,
+                    City: city,
+                    Area: area,
+                    Address: "",
+                    Notes: notes
+                },
+                items: items,
+                order_source: "Web Dashboard",
+                payment_status: paymentStatus,
+                notes: notes
+            };
+            
+            console.log("Order data:", orderData);
+            
+            try {
+                // Show loading state
+                const submitBtn = e.target.querySelector('button[type="submit"]');
+                const originalText = submitBtn.innerHTML;
+                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+                submitBtn.disabled = true;
+                
+                // Send to API
+                const response = await fetch(`${CONFIG.API_BASE_URL}/api/orders`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify(orderData)
+                });
+                
+                const result = await response.json();
+                console.log("API Response:", result);
+                
+                // Reset button
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
+                
+                if (result.success) {
+                    showNotification(
+                        `Order created successfully! Order ID: ${result.order_id}`, 
+                        "success"
+                    );
+                    
+                    // Reset form
+                    orderForm.reset();
+                    
+                    // Reset items container
+                    const itemsContainer = document.getElementById("itemsContainer");
+                    itemsContainer.innerHTML = "";
+                    itemsCounter = 0;
+                    addItemRow();
+                    
+                    // Clear location dropdown selection
+                    document.getElementById("locationSelect").selectedIndex = 0;
+                    
+                    // Refresh data
+                    setTimeout(() => {
+                        loadStats();
+                        loadOrders();
+                    }, 1000);
+                    
+                } else {
+                    showNotification(`Error: ${result.error}`, "danger");
+                }
+                
+            } catch (error) {
+                console.error("Error submitting order:", error);
+                showNotification(`Network error: ${error.message}`, "danger");
+                
+                // Reset button
+                const submitBtn = e.target.querySelector('button[type="submit"]');
+                submitBtn.innerHTML = '<i class="fas fa-save"></i> Save Order';
+                submitBtn.disabled = false;
+            }
+        });
     }
 });
 
-// View order details (placeholder)
-function viewOrder(orderId) {
+// Add item button handler
+window.addItem = function() {
+    addItemRow();
+};
+
+// Remove item button handler
+window.removeItem = function(button) {
+    const row = button.closest(".item-row");
+    if (row && document.querySelectorAll(".item-row").length > 1) {
+        row.remove();
+        calculateTotal();
+        updateRemoveButtons();
+    }
+};
+
+// View order details
+window.viewOrder = function(orderId) {
     showNotification(`Viewing order ${orderId} - Feature coming soon!`, "info");
-}
+};
 
 // Show notification toast
 function showNotification(message, type = "info") {
@@ -488,7 +547,7 @@ function showNotification(message, type = "info") {
     const toastTitle = document.getElementById("toastTitle");
     const toastMessage = document.getElementById("toastMessage");
     
-    // Set title and message based on type
+    // Set title based on type
     const titles = {
         "success": "Success!",
         "error": "Error!",
@@ -501,7 +560,10 @@ function showNotification(message, type = "info") {
     toastMessage.textContent = message;
     
     // Set toast color
-    const toast = new bootstrap.Toast(toastEl);
+    toastEl.className = `toast bg-${type} text-white`;
+    
+    // Show toast
+    const toast = new bootstrap.Toast(toastEl, { delay: 5000 });
     toast.show();
 }
 
@@ -540,9 +602,8 @@ function updateLastUpdated() {
 // Initialize when page loads
 document.addEventListener("DOMContentLoaded", () => {
     initDashboard();
-    updateRemoveButtons();
     
-    // Add event listeners for real-time calculation
+    // Add event listeners for form inputs
     document.addEventListener("change", (e) => {
         if (e.target.classList.contains("quantity") || 
             e.target.classList.contains("product-select")) {
