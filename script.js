@@ -775,10 +775,24 @@ document.addEventListener("DOMContentLoaded", function() {
                 const quantity = row.querySelector(".quantity").value;
                 const price = row.querySelector(".price").value;
                 
-                if (categorySelect.value && productSelect.value && quantity && price) {
+                console.log(`Checking row: Category=${categorySelect?.value}, Product=${productSelect?.value}, Qty=${quantity}, Price=${price}`);
+                
+                // Check if all required fields are filled
+                if (categorySelect && categorySelect.value && 
+                    productSelect && productSelect.value && 
+                    quantity && parseFloat(quantity) > 0 && 
+                    price && parseFloat(price) > 0) {
+                    
+                    // Get product name from selected option
                     const selectedOption = productSelect.options[productSelect.selectedIndex];
-                    const productName = selectedOption.dataset.productName || 
-                                       selectedOption.textContent.split(" - ")[0];
+                    let productName = selectedOption.dataset.productName;
+                    
+                    // Fallback: get from text content
+                    if (!productName) {
+                        productName = selectedOption.textContent.split(" - ")[0] || selectedOption.textContent;
+                    }
+                    
+                    console.log(`Adding item: ${productName}, ID: ${productSelect.value}, Qty: ${quantity}, Price: ${price}`);
                     
                     items.push({
                         ProductID: productSelect.value,
@@ -786,6 +800,10 @@ document.addEventListener("DOMContentLoaded", function() {
                         Quantity: parseFloat(quantity),
                         UnitPrice: parseFloat(price)
                     });
+                    
+                    hasValidItems = true;
+                } else {
+                    console.log("Row skipped - missing fields or invalid values");
                 }
             });
             
