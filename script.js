@@ -544,7 +544,7 @@ function addItemRow() {
         <!-- Category Column -->
         <div class="col-md-2">
             <select class="form-control category-select" required>
-                <option value="">Select Product</option>              
+                <option value="">Select Category</option>              
                 ${categories.map(cat => `<option value="${cat}">${cat}</option>`).join('')}
             </select>
         </div>
@@ -732,26 +732,6 @@ function updateRemoveButtons() {
 window.addItemRow = addItemRow;
 window.removeItemRow = removeItemRow;
 window.updateItemPriceAndInfo = updateItemPriceAndInfo;
-
-// Add this debug function
-function debugItems() {
-    console.log("=== DEBUG ITEMS ===");
-    
-    document.querySelectorAll(".item-row").forEach((row, index) => {
-        console.log(`Row ${index + 1}:`);
-        console.log("- Category:", row.querySelector(".category-select")?.value);
-        console.log("- Product:", row.querySelector(".product-select")?.value);
-        console.log("- Quantity:", row.querySelector(".quantity")?.value);
-        console.log("- Price:", row.querySelector(".price")?.value);
-        console.log("- Product select enabled:", !row.querySelector(".product-select")?.disabled);
-        console.log("---");
-    });
-    
-    console.log("Total rows:", document.querySelectorAll(".item-row").length);
-}
-
-// Call this before form submission
-debugItems();
 
 // Form submission handler
 document.addEventListener("DOMContentLoaded", function() {
