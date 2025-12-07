@@ -559,7 +559,7 @@ function addItemRow() {
         <!-- Quantity Column -->
         <div class="col-md-2">
             <input type="number" class="form-control quantity" 
-                   value="1" min="1" step="0.01" placeholder="Qty" required>
+                   value="1" min="1" step="1" placeholder="Qty" required>
         </div>
         
         <!-- Price Column -->
