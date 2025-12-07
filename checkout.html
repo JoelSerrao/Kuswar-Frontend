@@ -79,12 +79,7 @@
                                     <label class="form-label">City *</label>
                                     <select class="form-control" id="citySelect" required>
                                         <option value="">Select City</option>
-                                        <option value="Mumbai">Mumbai</option>
-                                        <option value="Delhi">Delhi</option>
-                                        <option value="Bangalore">Bangalore</option>
-                                        <option value="Hyderabad">Hyderabad</option>
-                                        <option value="Chennai">Chennai</option>
-                                        <option value="Kolkata">Kolkata</option>
+                                        <!-- Will be populated by JS -->
                                     </select>
                                 </div>
                                 <div class="col-md-6">
@@ -505,6 +500,31 @@
             toast.addEventListener('hidden.bs.toast', function() {
                 toast.remove();
             });
+        }
+        async function loadCitiesFromAPI() {
+            try {
+                const response = await fetch(`${CONFIG.API_BASE_URL}/api/cities`);
+                const data = await response.json();
+                
+                if (data.success && data.data) {
+                    const citySelect = document.getElementById('citySelect');
+                    // Clear existing options except the first one
+                    while (citySelect.options.length > 1) {
+                        citySelect.remove(1);
+                    }
+                    
+                    // Add city options from API
+                    data.data.forEach(city => {
+                        const option = document.createElement('option');
+                        option.value = city;
+                        option.textContent = city;
+                        citySelect.appendChild(option);
+                    });
+                }
+            } catch (error) {
+                console.log('Using static cities due to API error:', error);
+                // Keep the static cities as fallback
+            }
         }
 
         // Make functions available

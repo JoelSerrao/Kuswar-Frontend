@@ -217,27 +217,64 @@
             }
         }
 
-        // Load sample products
-        function loadSampleProducts() {
-            const sampleProducts = {
-                'Hamper': [
-                    { ProductID: '1', ProductName: 'Family Pack', UniPrice: 1999, Stock: 10, Description: 'Premium hamper for family' },
-                    { ProductID: '2', ProductName: 'Festival Hamper', UniPrice: 1499, Stock: 5, Description: 'Festival special hamper' },
-                    { ProductID: '3', ProductName: 'Corporate Hamper', UniPrice: 2999, Stock: 8, Description: 'Corporate gifting hamper' }
-                ],
-                'Box': [
-                    { ProductID: '4', ProductName: 'Chocolate Box', UniPrice: 599, Stock: 20, Description: 'Assorted chocolates' },
-                    { ProductID: '5', ProductName: 'Dry Fruit Box', UniPrice: 899, Stock: 15, Description: 'Premium dry fruits' },
-                    { ProductID: '6', ProductName: 'Sweets Box', UniPrice: 499, Stock: 25, Description: 'Traditional sweets' }
-                ],
-                'Goodies': [
-                    { ProductID: '7', ProductName: 'Cookies Pack', UniPrice: 299, Stock: 30, Description: 'Homemade cookies' },
-                    { ProductID: '8', ProductName: 'Biscuit Tin', UniPrice: 399, Stock: 18, Description: 'Assorted biscuits' },
-                    { ProductID: '9', ProductName: 'Snack Pack', UniPrice: 249, Stock: 22, Description: 'Mixed snacks' }
-                ]
-            };
-            
-            renderCategories(sampleProducts);
+        async function loadRealProducts() {
+            try {
+                // Try your API endpoints
+                const endpoints = [
+                    '/api/products/grouped-by-category',
+                    '/api/products/by-category/all', 
+                    '/api/products'
+                ];
+
+                let data = null;
+
+                for (const endpoint of endpoints) {
+                    try {
+                        const response = await fetch(`${CONFIG.API_BASE_URL}${endpoint}`);
+                        if (response.ok) {
+                            const result = await response.json();
+                            if (result.success && result.data) {
+                                data = result.data;
+                                console.log(`Loaded real products from ${endpoint}`);
+                                break;
+                            }
+                        }
+                    } catch (e) {
+                        console.log(`Failed endpoint ${endpoint}:`, e.message);
+                    }
+                }
+
+                if (data) {
+                    // Check data format and render
+                    if (Array.isArray(data)) {
+                        // Group by category if data is array
+                        const grouped = {};
+                        data.forEach(product => {
+                            const category = product.Category || 'Uncategorized';
+                            if (!grouped[category]) {
+                                grouped[category] = [];
+                            }
+                            grouped[category].push({
+                                ProductID: product.ProductID,
+                                ProductName: product.ProductName,
+                                UniPrice: product.UniPrice || 0,
+                                Stock: product.Stock || 0,
+                                Description: product.Description || ''
+                            });
+                        });
+                        renderCategories(grouped);
+                    } else if (typeof data === 'object') {
+                        // Data is already grouped
+                        renderCategories(data);
+                    }
+                } else {
+                    // Fallback to sample if API fails
+                    loadSampleProducts();
+                }
+            } catch (error) {
+                console.error('Error loading real products:', error);
+                loadSampleProducts();
+            }
         }
 
         // Render categories
