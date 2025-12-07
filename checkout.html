@@ -79,12 +79,18 @@
                                     <label class="form-label">City *</label>
                                     <select class="form-control" id="citySelect" required>
                                         <option value="">Select City</option>
-                                        <!-- Will be populated by JS -->
+                                        <!-- Cities will be loaded by JS -->
                                     </select>
+                                    <div class="form-text">Loading cities...</div>
                                 </div>
                                 <div class="col-md-6">
                                     <label class="form-label">Area *</label>
-                                    <input type="text" class="form-control" id="areaInput" required>
+                                    <input type="text" class="form-control" id="areaInput" 
+                                           list="areaSuggestions" placeholder="Start typing area..." required>
+                                    <datalist id="areaSuggestions">
+                                        <!-- Areas will be populated based on selected city -->
+                                    </datalist>
+                                    <div class="form-text">Type area name or select from suggestions</div>
                                 </div>
                             </div>
                             
