@@ -18,7 +18,7 @@ async function initDashboard() {
         // Load all required data
         await Promise.all([
             loadProducts(),
-            loadLocations(),
+            loadCities(),  // Changed from loadLocations()
             loadStats(),
             loadOrders()
         ]);
@@ -37,10 +37,39 @@ async function initDashboard() {
         // Initialize first item row
         addItemRow();
         
+        // Setup area input event listeners
+        setupAreaInputListeners();
+        
     } catch (error) {
         console.error("Dashboard initialization error:", error);
         showNotification("Failed to load dashboard. Please refresh.", "danger");
     }
+}
+
+// Setup area input listeners
+function setupAreaInputListeners() {
+    const areaInput = document.getElementById("areaInput");
+    const citySelect = document.getElementById("citySelect");
+    
+    // Enable/disable area input based on city selection
+    citySelect.addEventListener("change", function() {
+        areaInput.disabled = !this.value;
+        if (!this.value) {
+            areaInput.value = "";
+            areaInput.placeholder = "Select a city first";
+        }
+    });
+    
+    // Real-time validation
+    areaInput.addEventListener("input", function() {
+        const city = citySelect.value;
+        const area = this.value.trim();
+        
+        if (city && area.length >= 2) {
+            // You could add real-time validation here
+            // For example, check if area already exists
+        }
+    });
 }
 
 // Load products from API
@@ -262,27 +291,190 @@ function populateProductDropdowns() {
     });
 }
 
-// Populate location dropdown
-function populateLocationDropdown() {
-    const dropdown = document.getElementById("locationSelect");
-    
-    // Clear existing options except the first one
-    while (dropdown.options.length > 0) {
-        dropdown.remove(0);
+// Load cities for dropdown
+async function loadCities() {
+    try {
+        const response = await fetch(`${CONFIG.API_BASE_URL}/api/cities`);
+        const data = await response.json();
+        
+        if (data.success) {
+            const citySelect = document.getElementById("citySelect");
+            
+            // Clear existing options
+            while (citySelect.options.length > 0) {
+                citySelect.remove(0);
+            }
+            
+            // Add default option
+            const defaultOption = document.createElement("option");
+            defaultOption.value = "";
+            defaultOption.textContent = "Select City";
+            citySelect.appendChild(defaultOption);
+            
+            // Add city options
+            data.data.forEach(city => {
+                const option = document.createElement("option");
+                option.value = city;
+                option.textContent = city;
+                citySelect.appendChild(option);
+            });
+            
+            console.log(`Loaded ${data.data.length} cities`);
+        } else {
+            throw new Error(data.error || "Failed to load cities");
+        }
+    } catch (error) {
+        console.error("Error loading cities:", error);
+        showNotification("Failed to load cities", "warning");
     }
+}
+
+// Load areas for selected city (autocomplete)
+async function loadAreasForCity() {
+    const citySelect = document.getElementById("citySelect");
+    const city = citySelect.value;
+    const areaInput = document.getElementById("areaInput");
+    const areaDatalist = document.getElementById("areaSuggestions");
     
-    // Add default option
-    const defaultOption = document.createElement("option");
-    defaultOption.value = "";
-    defaultOption.textContent = "Select Location";
-    dropdown.appendChild(defaultOption);
+    // Clear previous suggestions
+    areaDatalist.innerHTML = "";
+    areaInput.value = "";
+    areaInput.placeholder = city ? "Start typing area name..." : "Select a city first";
+    areaInput.disabled = !city;
     
-    locations.forEach(location => {
-        const option = document.createElement("option");
-        option.value = `${location.City}|${location.Area}`;
-        option.textContent = `${location.City} - ${location.Area}`;
-        dropdown.appendChild(option);
+    if (!city) return;
+    
+    try {
+        showNotification(`Loading areas for ${city}...`, "info");
+        
+        const response = await fetch(`${CONFIG.API_BASE_URL}/api/areas/${encodeURIComponent(city)}`);
+        const data = await response.json();
+        
+        if (data.success) {
+            // Add areas to datalist for autocomplete
+            data.data.forEach(area => {
+                const option = document.createElement("option");
+                option.value = area;
+                areaDatalist.appendChild(option);
+            });
+            
+            console.log(`Loaded ${data.data.length} areas for ${city}`);
+            showNotification(`Found ${data.data.length} areas for ${city}`, "success");
+            
+            // Enable typeahead functionality
+            setupAreaTypeahead(city);
+        } else {
+            throw new Error(data.error || "Failed to load areas");
+        }
+    } catch (error) {
+        console.error("Error loading areas:", error);
+        showNotification(`No areas found for ${city}. You can add new ones.`, "info");
+        areaInput.placeholder = "Type new area name for this city";
+    }
+}
+
+// Setup typeahead/autocomplete for area input
+function setupAreaTypeahead(city) {
+    const areaInput = document.getElementById("areaInput");
+    const areaDatalist = document.getElementById("areaSuggestions");
+    
+    // Debounce search for better performance
+    let debounceTimer;
+    areaInput.addEventListener("input", function() {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(async () => {
+            const value = this.value.trim();
+            if (value.length < 2) return;
+            
+            // Check if this area already exists in suggestions
+            const options = Array.from(areaDatalist.options);
+            const exists = options.some(option => option.value.toLowerCase() === value.toLowerCase());
+            
+            if (!exists && city) {
+                // This is a new area - we'll save it when order is submitted
+                console.log(`New area detected: ${value} for ${city}`);
+                
+                // Optional: Auto-save new areas as user types
+                // await saveNewLocation(city, value);
+            }
+        }, 500);
     });
+    
+    // When user selects from dropdown
+    areaInput.addEventListener("change", function() {
+        const value = this.value;
+        const options = Array.from(areaDatalist.options);
+        const exists = options.some(option => option.value === value);
+        
+        if (exists) {
+            console.log(`Selected existing area: ${value}`);
+        }
+    });
+}
+
+// Save new location to database
+async function saveNewLocation(city, area) {
+    try {
+        const response = await fetch(`${CONFIG.API_BASE_URL}/api/locations?city=${encodeURIComponent(city)}&area=${encodeURIComponent(area)}`, {
+            method: "POST"
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            if (!data.exists) {
+                console.log(`Saved new location: ${area}, ${city}`);
+                
+                // Add to datalist if not already there
+                const areaDatalist = document.getElementById("areaSuggestions");
+                const options = Array.from(areaDatalist.options);
+                const alreadyExists = options.some(option => option.value === area);
+                
+                if (!alreadyExists) {
+                    const option = document.createElement("option");
+                    option.value = area;
+                    areaDatalist.appendChild(option);
+                }
+            }
+            return true;
+        } else {
+            console.error("Failed to save location:", data.error);
+            return false;
+        }
+    } catch (error) {
+        console.error("Error saving location:", error);
+        return false;
+    }
+}
+
+// Update order submission to save new locations
+async function saveOrderWithLocationCheck(orderData) {
+    try {
+        // First, save the location if it's new
+        const city = orderData.customer.City;
+        const area = orderData.customer.Area;
+        
+        if (city && area) {
+            await saveNewLocation(city, area);
+        }
+        
+        // Then save the order
+        const response = await fetch(`${CONFIG.API_BASE_URL}/api/orders`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(orderData)
+        });
+        
+        return await response.json();
+    } catch (error) {
+        console.error("Error in saveOrderWithLocationCheck:", error);
+        return {
+            success: false,
+            error: error.message
+        };
+    }
 }
 
 // Add new item row
@@ -393,6 +585,7 @@ function updateRemoveButtons() {
 document.addEventListener("DOMContentLoaded", function() {
     const orderForm = document.getElementById("orderForm");
     
+        // Update form submission to use new location system
     if (orderForm) {
         orderForm.addEventListener("submit", async function(e) {
             e.preventDefault();
@@ -402,8 +595,21 @@ document.addEventListener("DOMContentLoaded", function() {
             
             // Validate required fields
             const customerPhone = document.getElementById("customerPhone").value.trim();
+            const citySelect = document.getElementById("citySelect");
+            const areaInput = document.getElementById("areaInput");
+            
             if (!customerPhone) {
                 showNotification("Please enter customer phone number", "warning");
+                return;
+            }
+            
+            if (!citySelect.value) {
+                showNotification("Please select a city", "warning");
+                return;
+            }
+            
+            if (!areaInput.value.trim()) {
+                showNotification("Please enter an area", "warning");
                 return;
             }
             
@@ -434,8 +640,8 @@ document.addEventListener("DOMContentLoaded", function() {
             
             // Get form data
             const customerName = document.getElementById("customerName").value.trim() || "Unknown";
-            const location = document.getElementById("locationSelect").value;
-            const [city, area] = location ? location.split("|") : ["", ""];
+            const city = citySelect.value;
+            const area = areaInput.value.trim();
             const paymentStatus = document.getElementById("paymentStatus").value;
             const notes = document.getElementById("orderNotes").value.trim();
             
@@ -464,16 +670,8 @@ document.addEventListener("DOMContentLoaded", function() {
                 submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
                 submitBtn.disabled = true;
                 
-                // Send to API
-                const response = await fetch(`${CONFIG.API_BASE_URL}/api/orders`, {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json"
-                    },
-                    body: JSON.stringify(orderData)
-                });
-                
-                const result = await response.json();
+                // Use the new function that also saves locations
+                const result = await saveOrderWithLocationCheck(orderData);
                 console.log("API Response:", result);
                 
                 // Reset button
@@ -495,8 +693,14 @@ document.addEventListener("DOMContentLoaded", function() {
                     itemsCounter = 0;
                     addItemRow();
                     
-                    // Clear location dropdown selection
-                    document.getElementById("locationSelect").selectedIndex = 0;
+                    // Reset location fields
+                    citySelect.selectedIndex = 0;
+                    areaInput.value = "";
+                    areaInput.disabled = true;
+                    areaInput.placeholder = "Select a city first";
+                    
+                    // Clear area suggestions
+                    document.getElementById("areaSuggestions").innerHTML = "";
                     
                     // Refresh data
                     setTimeout(() => {

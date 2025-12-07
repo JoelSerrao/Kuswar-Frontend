@@ -60,14 +60,28 @@
                                     <input type="text" class="form-control" id="customerName" 
                                            placeholder="Full name">
                                 </div>
+                            </div>
+                            <!-- City & Area Section -->
+                            <div class="row mb-3">
                                 <div class="col-md-6">
-                                    <label class="form-label">City/Area</label>
-                                    <select class="form-control" id="locationSelect">
-                                        <option value="">Select Location</option>
+                                    <label class="form-label">City *</label>
+                                    <select class="form-control" id="citySelect" required onchange="loadAreasForCity()">
+                                        <option value="">Select City</option>
+                                        <!-- Cities will be populated using JS-->
                                     </select>
+                                    <div class = "form-text">Select from existing cities</div>
+                                </div>
+                                <div class="col-md6">
+                                    <label class="form-label">Area *</label>
+                                    <input type="text" class="form-control" id="areaInput"list="areaSuggestions"placeholder="Start typing area name..." required>
+                                    <datalist id="areaSuggestions">
+                                    <!-- Areas will be populated based on selected city -->
+                                    </datalist>
+                                    <div class = "form-text">
+                                        Start typing for suggestions. New areas will be saved automatically
+                                    </div>
                                 </div>
                             </div>
-
                             <!-- Order Items -->
                             <div class="mb-3">
                                 <label class="form-label">Order Items *</label>
