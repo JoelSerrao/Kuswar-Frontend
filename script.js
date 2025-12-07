@@ -8,6 +8,8 @@ const CONFIG = {
 let products = [];
 let locations = [];
 let itemsCounter = 0;
+let categories = [];
+let productsByCategory = {}; 
 
 // Initialize the dashboard
 async function initDashboard() {
@@ -17,29 +19,32 @@ async function initDashboard() {
         
         // Load all required data
         await Promise.all([
-            loadProducts(),
-            loadCities(),  // Changed from loadLocations()
+            loadCategories(),
+            loadCities(),  
             loadStats(),
             loadOrders()
         ]);
+
+        // After categories are loaded, load all products
+        await loadAllProductsByCategory();
         
         updateConnectionStatus();
         updateLastUpdated();
         
         showNotification("Dashboard loaded successfully!", "success");
         
+        // Initialize first item row
+        addItemRow();
+
+        // Setup area input event listeners
+        setupAreaInputListeners();
+
         // Auto-refresh every 60 seconds
         setInterval(() => {
             loadStats();
             updateLastUpdated();
         }, 60000);
-        
-        // Initialize first item row
-        addItemRow();
-        
-        // Setup area input event listeners
-        setupAreaInputListeners();
-        
+
     } catch (error) {
         console.error("Dashboard initialization error:", error);
         showNotification("Failed to load dashboard. Please refresh.", "danger");
@@ -88,6 +93,56 @@ async function loadProducts() {
         }
     } catch (error) {
         console.error("Error loading products:", error);
+        showNotification("Failed to load products", "warning");
+    }
+}
+
+// Load categories
+async function loadCategories() {
+    try {
+        console.log("Loading categories...");
+        const response = await fetch(`${CONFIG.API_BASE_URL}/api/categories`);
+        const data = await response.json();
+        
+        if (data.success) {
+            categories = data.data;
+            console.log(`Loaded ${categories.length} categories:`, categories);
+        } else {
+            throw new Error(data.error || "Failed to load categories");
+        }
+    } catch (error) {
+        console.error("Error loading categories:", error);
+        showNotification("Failed to load categories", "warning");
+    }
+}
+
+// Load all products grouped by category
+async function loadAllProductsByCategory() {
+    try {
+        console.log("Loading products by category...");
+        
+        // Load products for each category
+        for (const category of categories) {
+            const response = await fetch(`${CONFIG.API_BASE_URL}/api/products/by-category/${encodeURIComponent(category)}`);
+            const data = await response.json();
+            
+            if (data.success) {
+                productsByCategory[category] = data.data;
+                console.log(`Loaded ${data.count} products for category: ${category}`);
+            }
+        }
+        
+        // Also load a "all" category (all products)
+        const allResponse = await fetch(`${CONFIG.API_BASE_URL}/api/products`);
+        const allData = await allResponse.json();
+        
+        if (allData.success) {
+            productsByCategory["all"] = allData.data;
+            console.log(`Loaded ${allData.data.length} total products`);
+        }
+        
+    } catch (error) {
+        console.error("Error loading products by category:", error);
         showNotification("Failed to load products", "warning");
     }
 }
@@ -477,56 +532,157 @@ async function saveOrderWithLocationCheck(orderData) {
     }
 }
 
-// Add new item row
+// Add new item row with category and product dropdowns
 function addItemRow() {
     itemsCounter++;
     const container = document.getElementById("itemsContainer");
     const newRow = document.createElement("div");
     newRow.className = "item-row row g-2 mb-2";
     newRow.id = `item-row-${itemsCounter}`;
+    
     newRow.innerHTML = `
-        <div class="col-md-5">
-            <select class="form-control product-select" required>
-                <option value="">Select Product</option>
-                ${products.map(p => 
-                    `<option value="${p.ProductID}" data-price="${p.UniPrice}">
-                        ${p.ProductName} - ₹${p.UniPrice}
-                    </option>`
-                ).join("")}
+        <!-- Category Column -->
+        <div class="col-md-2">
+            <select class="form-control category-select" required>
+                <option value="">Select Product</option>              
+                ${categories.map(cat => `<option value="${cat}">${cat}</option>`).join('')}
             </select>
         </div>
+        
+        <!-- Product Column -->
         <div class="col-md-3">
-            <input type="number" class="form-control quantity" 
-                   value="1" min="1" step="1" placeholder="Qty" required>
+            <select class="form-control product-select" required disabled>
+                <option value="">Select Product</option>
+            </select>
         </div>
-        <div class="col-md-3">
+        
+        <!-- Quantity Column -->
+        <div class="col-md-2">
+            <input type="number" class="form-control quantity" 
+                   value="1" min="1" step="0.01" placeholder="Qty" required>
+        </div>
+        
+        <!-- Price Column -->
+        <div class="col-md-2">
             <input type="number" class="form-control price" 
                    placeholder="Price" readonly>
         </div>
-        <div class="col-md-1">
+        
+        <!-- Delete Column -->
+        <div class="col-md-2">
             <button type="button" class="btn btn-danger btn-sm remove-item"
                     onclick="removeItemRow('item-row-${itemsCounter}')">
                 <i class="fas fa-trash"></i>
             </button>
+        </div>
+        
+        <!-- Unit Column (optional - can show stock or unit type) -->
+        <div class="col-md-1">
+            <span class="unit-info small text-muted" style="display: inline-block; padding-top: 8px;"></span>
         </div>
     `;
     
     container.appendChild(newRow);
     
     // Add event listeners to the new row
-    const select = newRow.querySelector(".product-select");
-    const quantity = newRow.querySelector(".quantity");
+    const categorySelect = newRow.querySelector(".category-select");
+    const productSelect = newRow.querySelector(".product-select");
+    const quantityInput = newRow.querySelector(".quantity");
+    const unitInfo = newRow.querySelector(".unit-info");
     
-    select.addEventListener("change", function() {
-        updateItemPrice(this);
+    // Category change event
+    categorySelect.addEventListener("change", function() {
+        const category = this.value;
+        
+        if (category) {
+            // Enable and populate product dropdown
+            productSelect.disabled = false;
+            populateProductDropdown(category, productSelect);
+            
+            // Clear previous selection
+            productSelect.selectedIndex = 0;
+            newRow.querySelector(".price").value = "";
+            unitInfo.textContent = "";
+        } else {
+            // Disable product dropdown
+            productSelect.disabled = true;
+            productSelect.innerHTML = '<option value="">Select Product</option>';
+            newRow.querySelector(".price").value = "";
+            unitInfo.textContent = "";
+        }
+        
+        calculateTotal();
     });
     
-    quantity.addEventListener("input", function() {
+    // Product change event
+    productSelect.addEventListener("change", function() {
+        updateItemPriceAndInfo(this);
+        calculateTotal();
+    });
+    
+    // Quantity change event
+    quantityInput.addEventListener("input", function() {
         calculateTotal();
     });
     
     updateRemoveButtons();
     calculateTotal();
+}
+
+// Populate product dropdown based on category
+function populateProductDropdown(category, productSelect) {
+    // Clear existing options
+    productSelect.innerHTML = '<option value="">Select Product</option>';
+    
+    // Get products for this category
+    const products = productsByCategory[category] || [];
+    
+    // Add product options
+    products.forEach(product => {
+        const option = document.createElement("option");
+        option.value = product.ProductID;
+        option.textContent = `${product.ProductName}`;
+        option.dataset.price = product.UniPrice || 0;
+        option.dataset.productName = product.ProductName;
+        option.dataset.stock = product.Stock || 0;
+        productSelect.appendChild(option);
+    });
+    
+    // If no products found, show message
+    if (products.length === 0) {
+        const option = document.createElement("option");
+        option.value = "";
+        option.textContent = "No products in this category";
+        option.disabled = true;
+        productSelect.appendChild(option);
+    }
+}
+
+// Update price and unit info when product is selected
+function updateItemPriceAndInfo(productSelect) {
+    const selectedOption = productSelect.options[productSelect.selectedIndex];
+    const price = selectedOption.dataset.price || 0;
+    const productName = selectedOption.dataset.productName || "";
+    const stock = selectedOption.dataset.stock || 0;
+    
+    // Update price field
+    const priceInput = productSelect.closest(".row").querySelector(".price");
+    priceInput.value = price;
+    
+    // Update unit info (show stock)
+    const unitInfo = productSelect.closest(".row").querySelector(".unit-info");
+    if (stock > 0) {
+        unitInfo.textContent = `Stock: ${stock}`;
+        unitInfo.className = "unit-info small text-success";
+    } else {
+        unitInfo.textContent = "Out of stock";
+        unitInfo.className = "unit-info small text-danger";
+    }
+    
+    // Show notification if stock is low
+    if (stock > 0 && stock < 10) {
+        showNotification(`Low stock: ${productName} has only ${stock} units left`, "warning");
+    }
 }
 
 // Remove item row
@@ -537,14 +693,6 @@ function removeItemRow(rowId) {
         calculateTotal();
         updateRemoveButtons();
     }
-}
-
-// Update price when product is selected
-function updateItemPrice(select) {
-    const price = select.options[select.selectedIndex].dataset.price || 0;
-    const priceInput = select.closest(".row").querySelector(".price");
-    priceInput.value = price;
-    calculateTotal();
 }
 
 // Calculate total order amount
@@ -580,6 +728,10 @@ function updateRemoveButtons() {
         });
     }
 }
+// Make functions globally available
+window.addItemRow = addItemRow;
+window.removeItemRow = removeItemRow;
+window.updateItemPriceAndInfo = updateItemPriceAndInfo;
 
 // Form submission handler
 document.addEventListener("DOMContentLoaded", function() {
@@ -618,15 +770,19 @@ document.addEventListener("DOMContentLoaded", function() {
             let hasValidItems = false;
             
             document.querySelectorAll(".item-row").forEach(row => {
-                const select = row.querySelector(".product-select");
+                const categorySelect = row.querySelector(".category-select");
+                const productSelect = row.querySelector(".product-select");
                 const quantity = row.querySelector(".quantity").value;
                 const price = row.querySelector(".price").value;
                 
-                if (select && select.value && quantity && price) {
-                    hasValidItems = true;
+                if (categorySelect.value && productSelect.value && quantity && price) {
+                    const selectedOption = productSelect.options[productSelect.selectedIndex];
+                    const productName = selectedOption.dataset.productName || 
+                                       selectedOption.textContent.split(" - ")[0];
+                    
                     items.push({
-                        ProductID: select.value,
-                        ProductName: select.options[select.selectedIndex].text.split(" - ")[0],
+                        ProductID: productSelect.value,
+                        ProductName: productName,
                         Quantity: parseFloat(quantity),
                         UnitPrice: parseFloat(price)
                     });

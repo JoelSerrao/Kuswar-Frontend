@@ -116,11 +116,86 @@ body {
 
 .item-row {
     background: white;
-    padding: 10px;
+    padding: 12px;
     border-radius: 8px;
-    border: 1px solid #e9ecef;
+    border: 2px solid #e9ecef;
+    margin-bottom: 10px;
+    transition: all 0.3s;
 }
 
+.item-row:hover {
+    border-color: #4361ee;
+    box-shadow: 0 4px 12px rgba(67, 97, 238, 0.1);
+}
+
+/* Category and Product Dropdowns */
+.category-select, .product-select {
+    transition: all 0.3s;
+}
+
+.category-select:focus, .product-select:focus {
+    border-color: #4361ee;
+    box-shadow: 0 0 0 0.2rem rgba(67, 97, 238, 0.25);
+}
+
+.product-select:disabled {
+    background-color: #f8f9fa;
+    cursor: not-allowed;
+}
+
+/* Unit Info Styling */
+.unit-info {
+    font-size: 0.8rem;
+    padding: 6px 0;
+}
+
+/* Column Widths for 5-column layout */
+@media (min-width: 768px) {
+    .col-md-2 {
+        flex: 0 0 16.666667%;
+        max-width: 16.666667%;
+    }
+    
+    .col-md-3 {
+        flex: 0 0 25%;
+        max-width: 25%;
+    }
+    
+    .col-md-1 {
+        flex: 0 0 8.333333%;
+        max-width: 8.333333%;
+    }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .item-row .col-md-2,
+    .item-row .col-md-3,
+    .item-row .col-md-1 {
+        margin-bottom: 8px;
+    }
+    
+    .unit-info {
+        text-align: center;
+        padding: 4px 0;
+    }
+}
+
+/* Stock indicators */
+.stock-low {
+    color: #f59e0b;
+    font-weight: 600;
+}
+
+.stock-out {
+    color: #ef4444;
+    font-weight: 600;
+}
+
+.stock-ok {
+    color: #10b981;
+    font-weight: 600;
+}
 /* Button Styling */
 .btn-primary {
     background-color: var(--primary-color);
