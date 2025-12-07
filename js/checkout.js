@@ -1,28 +1,30 @@
 // Checkout page functionality
 let cart = {};
-let paymentRecipients = []; // Store list of people who can receive payments
+let paymentRecipients = [];
 
 async function initCheckoutPage() {
     try {
         // Load cart from localStorage
-        const savedCart = localStorage.getItem('checkout_cart');
+        const savedCart = localStorage.getItem('checkout_cart') || localStorage.getItem('kuswar_cart');
         if (savedCart) {
             cart = JSON.parse(savedCart);
         }
         
         // If cart is empty, redirect to homepage
         if (Object.keys(cart).length === 0) {
-            showNotification('Your cart is empty. Adding some sample items for demo.', 'info');
-            // For demo purposes, add sample items
-            addSampleItems();
+            showNotification('Your cart is empty. Redirecting to homepage...', 'warning');
+            setTimeout(() => {
+                window.location.href = 'index.html';
+            }, 2000);
+            return;
         }
         
         // Load required data
-        await Promise.all([
-            loadCities('citySelect'),
-            loadPaymentRecipients(),
-            loadOrderSummary()
-        ]);
+        await loadCities('citySelect');
+        await loadPaymentRecipients();
+        
+        // Load order summary
+        loadOrderSummary();
         
         // Set minimum delivery date to today
         setDeliveryDateMin();
@@ -39,32 +41,10 @@ async function initCheckoutPage() {
     }
 }
 
-// Add sample items for demo
-function addSampleItems() {
-    cart = {
-        'sample1': {
-            id: 'sample1',
-            name: 'Premium Hamper',
-            price: 1999,
-            category: 'Hamper',
-            quantity: 1
-        },
-        'sample2': {
-            id: 'sample2',
-            name: 'Chocolate Box',
-            price: 599,
-            category: 'Box',
-            quantity: 2
-        }
-    };
-    saveCart();
-}
-
-// Load payment recipients from backend
+// Load payment recipients
 async function loadPaymentRecipients() {
     try {
-        // In a real app, you would fetch this from your API
-        // For now, using a static list
+        // For demo, using static list
         paymentRecipients = [
             'John Doe',
             'Jane Smith', 
@@ -84,9 +64,16 @@ function populatePaidToDropdown() {
     const paidToInput = document.getElementById('paidTo');
     if (!paidToInput) return;
     
-    // Create datalist
-    const datalist = document.createElement('datalist');
-    datalist.id = 'paidToSuggestions';
+    // Create datalist if it doesn't exist
+    let datalist = document.getElementById('paidToSuggestions');
+    if (!datalist) {
+        datalist = document.createElement('datalist');
+        datalist.id = 'paidToSuggestions';
+        document.body.appendChild(datalist);
+    }
+    
+    // Clear existing options
+    datalist.innerHTML = '';
     
     // Add options
     paymentRecipients.forEach(recipient => {
@@ -95,8 +82,6 @@ function populatePaidToDropdown() {
         datalist.appendChild(option);
     });
     
-    // Insert after input
-    paidToInput.parentNode.insertBefore(datalist, paidToInput.nextSibling);
     paidToInput.setAttribute('list', 'paidToSuggestions');
 }
 
@@ -169,7 +154,7 @@ function loadOrderSummary() {
     
     orderSummary.innerHTML = itemsHTML;
     
-    // Update subtotal and total
+    // Update subtotal
     document.getElementById('subtotal').textContent = `₹${subtotal.toFixed(2)}`;
 }
 
@@ -183,22 +168,28 @@ function updateCartItemQuantity(productId, newQuantity) {
         cart[productId].quantity = newQuantity;
     }
     
-    saveCart();
+    // Update localStorage
+    localStorage.setItem('checkout_cart', JSON.stringify(cart));
+    
+    // Reload order summary
     loadOrderSummary();
     calculateOrderTotal();
-    
-    // Update global cart count
-    updateCartCount();
 }
 
 // Remove cart item
 function removeCartItem(productId) {
     if (cart[productId]) {
         delete cart[productId];
-        saveCart();
+        localStorage.setItem('checkout_cart', JSON.stringify(cart));
         loadOrderSummary();
         calculateOrderTotal();
-        updateCartCount();
+        
+        // If cart is empty, redirect to homepage
+        if (Object.keys(cart).length === 0) {
+            setTimeout(() => {
+                window.location.href = 'index.html';
+            }, 1000);
+        }
     }
 }
 
@@ -209,7 +200,6 @@ function calculateOrderTotal() {
         return total + (item.price * item.quantity);
     }, 0);
     
-    // In this version, no taxes or discounts
     const total = subtotal;
     
     document.getElementById('orderTotal').textContent = `₹${total.toFixed(2)}`;
@@ -217,7 +207,7 @@ function calculateOrderTotal() {
     return total;
 }
 
-// Setup event listeners for checkout page
+// Setup event listeners
 function setupCheckoutEventListeners() {
     // City change event
     const citySelect = document.getElementById('citySelect');
@@ -227,9 +217,11 @@ function setupCheckoutEventListeners() {
             if (city) {
                 loadAreasForCity(city, 'areaInput', 'areaSuggestions');
                 document.getElementById('areaInput').disabled = false;
+                document.getElementById('areaInput').placeholder = 'Enter area name';
             } else {
                 document.getElementById('areaInput').value = '';
                 document.getElementById('areaInput').disabled = true;
+                document.getElementById('areaInput').placeholder = 'Select a city first';
                 document.getElementById('areaSuggestions').innerHTML = '';
             }
         });
@@ -247,14 +239,18 @@ function setupCheckoutEventListeners() {
             } else {
                 paidToContainer.style.display = 'none';
                 document.getElementById('paidTo').required = false;
+                document.getElementById('paidTo').value = '';
             }
         });
+        
+        // Trigger change event on load
+        paymentStatus.dispatchEvent(new Event('change'));
     }
     
-    // Form validation
-    const customerForm = document.getElementById('customerForm');
-    if (customerForm) {
-        customerForm.addEventListener('submit', function(e) {
+    // Form submission
+    const orderForm = document.getElementById('customerForm');
+    if (orderForm) {
+        orderForm.addEventListener('submit', function(e) {
             e.preventDefault();
             placeOrder();
         });
@@ -275,7 +271,7 @@ function setDeliveryDateMin() {
     }
 }
 
-// Place order function
+// Place order
 async function placeOrder() {
     try {
         // Validate form
@@ -286,21 +282,25 @@ async function placeOrder() {
         
         if (!customerName) {
             showNotification('Please enter customer name', 'warning');
+            document.getElementById('customerName').focus();
             return;
         }
         
         if (!customerPhone || customerPhone.length < 10) {
-            showNotification('Please enter a valid phone number', 'warning');
+            showNotification('Please enter a valid phone number (10 digits)', 'warning');
+            document.getElementById('customerPhone').focus();
             return;
         }
         
         if (!city) {
             showNotification('Please select a city', 'warning');
+            document.getElementById('citySelect').focus();
             return;
         }
         
         if (!area) {
             showNotification('Please enter area', 'warning');
+            document.getElementById('areaInput').focus();
             return;
         }
         
@@ -308,6 +308,7 @@ async function placeOrder() {
         const cartItems = Object.values(cart);
         if (cartItems.length === 0) {
             showNotification('Please add items to cart', 'warning');
+            window.location.href = 'index.html';
             return;
         }
         
@@ -336,6 +337,10 @@ async function placeOrder() {
             const paidTo = document.getElementById('paidTo').value.trim();
             if (paidTo) {
                 orderData.paid_to = paidTo;
+            } else {
+                showNotification('Please enter who received the payment', 'warning');
+                document.getElementById('paidTo').focus();
+                return;
             }
         }
         
@@ -358,7 +363,8 @@ async function placeOrder() {
             showNotification(`Order placed successfully! Order ID: ${result.order_id}`, 'success');
             
             // Clear cart
-            clearCart();
+            localStorage.removeItem('kuswar_cart');
+            localStorage.removeItem('checkout_cart');
             
             // Reset form
             document.getElementById('customerForm').reset();
@@ -381,6 +387,23 @@ async function placeOrder() {
 // Save order to backend
 async function saveOrder(orderData) {
     try {
+        // For demo, simulate API call
+        console.log('Saving order:', orderData);
+        
+        // Simulate API delay
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // Generate random order ID
+        const orderId = 'ORD' + Math.random().toString(36).substr(2, 9).toUpperCase();
+        
+        return {
+            success: true,
+            order_id: orderId,
+            message: 'Order saved successfully'
+        };
+        
+        /* 
+        // Uncomment this for real API call
         const response = await fetch(`${CONFIG.API_BASE_URL}/api/orders`, {
             method: 'POST',
             headers: {
@@ -389,8 +412,8 @@ async function saveOrder(orderData) {
             body: JSON.stringify(orderData)
         });
         
-        const result = await response.json();
-        return result;
+        return await response.json();
+        */
         
     } catch (error) {
         console.error('Error saving order:', error);
@@ -401,12 +424,12 @@ async function saveOrder(orderData) {
     }
 }
 
-// Save cart to localStorage
-function saveCart() {
-    localStorage.setItem('checkout_cart', JSON.stringify(cart));
-}
-
 // Initialize when page loads
 document.addEventListener('DOMContentLoaded', function() {
     initCheckoutPage();
 });
+
+// Make functions available globally
+window.updateCartItemQuantity = updateCartItemQuantity;
+window.removeCartItem = removeCartItem;
+window.placeOrder = placeOrder;

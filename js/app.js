@@ -4,95 +4,130 @@ const CONFIG = {
     CART_STORAGE_KEY: "kuswar_cart"
 };
 
-// Global cart object
+// Global variables
 let cart = {};
 
-// Initialize cart from localStorage
-function initCart() {
-    const savedCart = localStorage.getItem(CONFIG.CART_STORAGE_KEY);
-    if (savedCart) {
-        cart = JSON.parse(savedCart);
-        updateCartCount();
-    }
-}
-
-// Save cart to localStorage
-function saveCart() {
-    localStorage.setItem(CONFIG.CART_STORAGE_KEY, JSON.stringify(cart));
-    updateCartCount();
-}
-
-// Update cart count in navigation
-function updateCartCount() {
-    const cartCount = document.getElementById('cartCount');
-    if (cartCount) {
-        const totalItems = Object.values(cart).reduce((sum, item) => sum + item.quantity, 0);
-        cartCount.textContent = totalItems;
-        cartCount.style.display = totalItems > 0 ? 'inline-block' : 'none';
-    }
-}
-
-// Add item to cart
-function addToCart(productId, productName, price, category) {
-    if (!cart[productId]) {
-        cart[productId] = {
-            id: productId,
-            name: productName,
-            price: price,
-            category: category,
-            quantity: 1
-        };
-    } else {
-        cart[productId].quantity += 1;
-    }
-    saveCart();
-    showNotification(`${productName} added to cart`, 'success');
-}
-
-// Remove item from cart
-function removeFromCart(productId) {
-    if (cart[productId]) {
-        if (cart[productId].quantity > 1) {
-            cart[productId].quantity -= 1;
+// Load cities for dropdown
+async function loadCities(selectElementId) {
+    try {
+        console.log('Loading cities...');
+        const response = await fetch(`${CONFIG.API_BASE_URL}/api/cities`);
+        const data = await response.json();
+        
+        if (data.success) {
+            const select = document.getElementById(selectElementId);
+            if (!select) {
+                console.error(`Select element with ID ${selectElementId} not found`);
+                return;
+            }
+            
+            // Clear existing options except the first one
+            while (select.options.length > 1) {
+                select.remove(1);
+            }
+            
+            // Add city options
+            data.data.forEach(city => {
+                const option = document.createElement('option');
+                option.value = city;
+                option.textContent = city;
+                select.appendChild(option);
+            });
+            
+            console.log(`Loaded ${data.data.length} cities`);
         } else {
-            delete cart[productId];
+            console.error('Failed to load cities:', data.error);
+            loadSampleCities(selectElementId);
         }
-        saveCart();
+    } catch (error) {
+        console.error('Error loading cities:', error);
+        loadSampleCities(selectElementId);
     }
 }
 
-// Update item quantity in cart
-function updateCartQuantity(productId, quantity) {
-    if (cart[productId]) {
-        if (quantity > 0) {
-            cart[productId].quantity = quantity;
+// Load sample cities for demo
+function loadSampleCities(selectElementId) {
+    const select = document.getElementById(selectElementId);
+    if (!select) return;
+    
+    const sampleCities = ['Mumbai', 'Delhi', 'Bangalore', 'Hyderabad', 'Chennai', 'Kolkata'];
+    
+    sampleCities.forEach(city => {
+        const option = document.createElement('option');
+        option.value = city;
+        option.textContent = city;
+        select.appendChild(option);
+    });
+    
+    console.log('Loaded sample cities');
+}
+
+// Load areas for selected city
+async function loadAreasForCity(city, areaInputId, areaDatalistId) {
+    const areaInput = document.getElementById(areaInputId);
+    const areaDatalist = document.getElementById(areaDatalistId);
+    
+    if (!city || !areaInput || !areaDatalist) return;
+    
+    try {
+        console.log(`Loading areas for ${city}...`);
+        const response = await fetch(`${CONFIG.API_BASE_URL}/api/areas/${encodeURIComponent(city)}`);
+        const data = await response.json();
+        
+        if (data.success) {
+            // Clear previous suggestions
+            areaDatalist.innerHTML = '';
+            
+            // Add areas to datalist
+            data.data.forEach(area => {
+                const option = document.createElement('option');
+                option.value = area;
+                areaDatalist.appendChild(option);
+            });
+            
+            console.log(`Loaded ${data.data.length} areas for ${city}`);
         } else {
-            delete cart[productId];
+            console.error('Failed to load areas:', data.error);
+            loadSampleAreas(city, areaDatalist);
         }
-        saveCart();
+    } catch (error) {
+        console.error('Error loading areas:', error);
+        loadSampleAreas(city, areaDatalist);
     }
 }
 
-// Get cart total
-function getCartTotal() {
-    return Object.values(cart).reduce((total, item) => {
-        return total + (item.price * item.quantity);
-    }, 0);
+// Load sample areas for demo
+function loadSampleAreas(city, areaDatalist) {
+    const sampleAreas = {
+        'Mumbai': ['Andheri', 'Bandra', 'Colaba', 'Dadar', 'Juhu'],
+        'Delhi': ['Connaught Place', 'Karol Bagh', 'Rohini', 'Dwarka', 'Saket'],
+        'Bangalore': ['Koramangala', 'Indiranagar', 'Whitefield', 'MG Road', 'JP Nagar'],
+        'Hyderabad': ['Banjara Hills', 'Gachibowli', 'Hitech City', 'Secunderabad'],
+        'Chennai': ['Anna Nagar', 'T Nagar', 'Adyar', 'Velachery'],
+        'Kolkata': ['Salt Lake', 'Park Street', 'Howrah', 'New Town']
+    };
+    
+    const areas = sampleAreas[city] || ['Area 1', 'Area 2', 'Area 3'];
+    
+    areas.forEach(area => {
+        const option = document.createElement('option');
+        option.value = area;
+        areaDatalist.appendChild(option);
+    });
+    
+    console.log(`Loaded sample areas for ${city}`);
 }
 
-// Clear cart
-function clearCart() {
-    cart = {};
-    saveCart();
-}
-
-// Notification function
+// Show notification
 function showNotification(message, type = 'info') {
-    // Create toast notification
-    const toastContainer = document.querySelector('.toast-container');
+    console.log(`${type.toUpperCase()}: ${message}`);
+    
+    // Create toast if not exists
+    let toastContainer = document.querySelector('.toast-container');
     if (!toastContainer) {
-        console.log('Toast container not found');
-        return;
+        toastContainer = document.createElement('div');
+        toastContainer.className = 'toast-container position-fixed bottom-0 end-0 p-3';
+        document.body.appendChild(toastContainer);
     }
     
     const toastId = 'toast-' + Date.now();
@@ -114,89 +149,48 @@ function showNotification(message, type = 'info') {
     
     toastContainer.appendChild(toast);
     
-    const bsToast = new bootstrap.Toast(toast);
+    // Initialize Bootstrap Toast
+    const bsToast = new bootstrap.Toast(toast, {
+        autohide: true,
+        delay: 3000
+    });
     bsToast.show();
     
     // Remove toast after it's hidden
-    toast.addEventListener('hidden.bs.toast', function () {
+    toast.addEventListener('hidden.bs.toast', function() {
         toast.remove();
     });
 }
+
+// Initialize when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize tooltips if Bootstrap is loaded
+    if (typeof bootstrap !== 'undefined') {
+        const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        tooltipTriggerList.map(function(tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+    }
+    
+    // Check API health
+    checkAPIHealth();
+});
 
 // Check API health
 async function checkAPIHealth() {
     try {
         const response = await fetch(`${CONFIG.API_BASE_URL}/api/health`);
         const data = await response.json();
-        return data.status === 'healthy';
-    } catch (error) {
-        console.error('API health check failed:', error);
-        return false;
-    }
-}
-
-// Load cities for dropdowns
-async function loadCities(selectElementId) {
-    try {
-        const response = await fetch(`${CONFIG.API_BASE_URL}/api/cities`);
-        const data = await response.json();
         
-        if (data.success) {
-            const select = document.getElementById(selectElementId);
-            if (!select) return;
-            
-            // Clear existing options except the first one
-            while (select.options.length > 1) {
-                select.remove(1);
-            }
-            
-            // Add city options
-            data.data.forEach(city => {
-                const option = document.createElement('option');
-                option.value = city;
-                option.textContent = city;
-                select.appendChild(option);
-            });
+        if (data.status !== 'healthy') {
+            console.warn('API is not healthy:', data);
         }
     } catch (error) {
-        console.error('Error loading cities:', error);
+        console.warn('Cannot connect to API, using offline mode:', error);
     }
 }
 
-// Load areas for selected city
-async function loadAreasForCity(city, areaInputId, areaDatalistId) {
-    const areaInput = document.getElementById(areaInputId);
-    const areaDatalist = document.getElementById(areaDatalistId);
-    
-    if (!city || !areaInput || !areaDatalist) return;
-    
-    try {
-        const response = await fetch(`${CONFIG.API_BASE_URL}/api/areas/${encodeURIComponent(city)}`);
-        const data = await response.json();
-        
-        if (data.success) {
-            // Clear previous suggestions
-            areaDatalist.innerHTML = '';
-            
-            // Add areas to datalist
-            data.data.forEach(area => {
-                const option = document.createElement('option');
-                option.value = area;
-                areaDatalist.appendChild(option);
-            });
-        }
-    } catch (error) {
-        console.error('Error loading areas:', error);
-    }
-}
-
-// Initialize when page loads
-document.addEventListener('DOMContentLoaded', function() {
-    initCart();
-    
-    // Initialize tooltips
-    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-    tooltipTriggerList.map(function (tooltipTriggerEl) {
-        return new bootstrap.Tooltip(tooltipTriggerEl);
-    });
-});
+// Make functions available globally
+window.loadCities = loadCities;
+window.loadAreasForCity = loadAreasForCity;
+window.showNotification = showNotification;

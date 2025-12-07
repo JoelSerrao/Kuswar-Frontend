@@ -3,11 +3,14 @@ let statsData = {};
 
 async function initStatsPage() {
     try {
+        // Check if Chart.js is loaded
+        if (typeof Chart === 'undefined') {
+            // Load Chart.js dynamically
+            await loadChartJS();
+        }
+        
         // Load stats
         await loadStats();
-        
-        // Load recent orders for chart
-        await loadRecentOrdersForChart();
         
         // Setup date filters
         setupDateFilters();
@@ -20,11 +23,28 @@ async function initStatsPage() {
         
     } catch (error) {
         console.error('Error initializing stats page:', error);
-        showNotification('Failed to load statistics', 'danger');
+        showNotification('Failed to load statistics. Using sample data.', 'warning');
         
         // Load sample data for demo
         loadSampleStats();
+        initCharts();
     }
+}
+
+// Load Chart.js dynamically
+function loadChartJS() {
+    return new Promise((resolve, reject) => {
+        if (typeof Chart !== 'undefined') {
+            resolve();
+            return;
+        }
+        
+        const script = document.createElement('script');
+        script.src = 'https://cdn.jsdelivr.net/npm/chart.js';
+        script.onload = resolve;
+        script.onerror = reject;
+        document.head.appendChild(script);
+    });
 }
 
 // Load stats from backend
@@ -38,15 +58,13 @@ async function loadStats() {
         if (data.success) {
             statsData = data.data;
             renderStatsCards();
-            updateCharts();
-            
             showNotification('Statistics loaded', 'success');
         } else {
             throw new Error(data.error || 'Failed to load stats');
         }
     } catch (error) {
         console.error('Error loading stats:', error);
-        throw error;
+        throw error; // Let the caller handle
     }
 }
 
@@ -63,7 +81,6 @@ function loadSampleStats() {
     };
     
     renderStatsCards();
-    updateCharts();
 }
 
 // Render stats cards
@@ -83,7 +100,7 @@ function renderStatsCards() {
         {
             icon: 'fas fa-rupee-sign',
             title: "Monthly Revenue",
-            value: `₹${(statsData.monthly_revenue || 0).toLocaleString()}`,
+            value: `₹${(statsData.monthly_revenue || 0).toLocaleString('en-IN')}`,
             color: 'success',
             trend: '+8%',
             trendUp: true
@@ -127,19 +144,19 @@ function renderStatsCards() {
     cards.forEach(card => {
         cardsHTML += `
             <div class="col-xl-4 col-md-6 mb-4">
-                <div class="card stat-card h-100 border-left-${card.color} border-left-3 shadow-sm">
+                <div class="card stat-card h-100 border-start border-start-4 border-${card.color} shadow-sm">
                     <div class="card-body">
                         <div class="row no-gutters align-items-center">
                             <div class="col mr-2">
-                                <div class="text-xs font-weight-bold text-${card.color} text-uppercase mb-1">
+                                <div class="text-xs fw-bold text-${card.color} text-uppercase mb-1">
                                     ${card.title}
                                 </div>
-                                <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                <div class="h5 mb-0 fw-bold text-gray-800">
                                     ${card.value}
                                 </div>
                                 <div class="mt-2 mb-0 text-muted text-xs">
                                     <span class="${card.trendUp ? 'text-success' : 'text-danger'}">
-                                        <i class="fas fa-${card.trendUp ? 'arrow-up' : 'arrow-down'}"></i>
+                                        <i class="fas fa-${card.trendUp ? 'arrow-up' : 'arrow-down'} me-1"></i>
                                         ${card.trend}
                                     </span>
                                     Since last month
@@ -156,21 +173,6 @@ function renderStatsCards() {
     });
     
     statsCards.innerHTML = cardsHTML;
-}
-
-// Load recent orders for chart
-async function loadRecentOrdersForChart() {
-    try {
-        const response = await fetch(`${CONFIG.API_BASE_URL}/api/orders?limit=50`);
-        const data = await response.json();
-        
-        if (data.success) {
-            window.recentOrders = data.data || [];
-        }
-    } catch (error) {
-        console.error('Error loading recent orders:', error);
-        window.recentOrders = [];
-    }
 }
 
 // Setup date filters
@@ -200,9 +202,14 @@ function setupStatsEventListeners() {
     const refreshBtn = document.getElementById('refreshStats');
     if (refreshBtn) {
         refreshBtn.addEventListener('click', async () => {
+            const originalHtml = refreshBtn.innerHTML;
             refreshBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-            await loadStats();
-            refreshBtn.innerHTML = '<i class="fas fa-sync-alt"></i>';
+            try {
+                await loadStats();
+            } catch (error) {
+                loadSampleStats();
+            }
+            refreshBtn.innerHTML = originalHtml;
         });
     }
     
@@ -215,21 +222,18 @@ function setupStatsEventListeners() {
 
 // Apply date filter
 function applyDateFilter() {
-    // This would filter the data based on selected date range
-    // In a real implementation, you would fetch filtered data from backend
     showNotification('Date filter applied', 'info');
+    // In real implementation, you would fetch filtered data from backend
 }
 
 // Initialize charts
 function initCharts() {
-    // Revenue chart
-    initRevenueChart();
-    
-    // Orders chart
-    initOrdersChart();
-    
-    // Payment status chart
-    initPaymentStatusChart();
+    // Wait a bit for DOM to be ready
+    setTimeout(() => {
+        initRevenueChart();
+        initOrdersChart();
+        initPaymentStatusChart();
+    }, 100);
 }
 
 // Initialize revenue chart
@@ -237,7 +241,12 @@ function initRevenueChart() {
     const ctx = document.getElementById('revenueChart');
     if (!ctx) return;
     
-    // Sample data - in real app, fetch from backend
+    // Destroy existing chart if it exists
+    if (window.revenueChart) {
+        window.revenueChart.destroy();
+    }
+    
+    // Sample data
     const labels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
     const data = [65000, 59000, 80000, 81000, 125000, 140000];
     
@@ -265,7 +274,7 @@ function initRevenueChart() {
                 tooltip: {
                     callbacks: {
                         label: function(context) {
-                            return `₹${context.raw.toLocaleString()}`;
+                            return `₹${context.raw.toLocaleString('en-IN')}`;
                         }
                     }
                 }
@@ -275,7 +284,7 @@ function initRevenueChart() {
                     beginAtZero: true,
                     ticks: {
                         callback: function(value) {
-                            return '₹' + value.toLocaleString();
+                            return '₹' + value.toLocaleString('en-IN');
                         }
                     }
                 }
@@ -289,7 +298,11 @@ function initOrdersChart() {
     const ctx = document.getElementById('ordersChart');
     if (!ctx) return;
     
-    // Sample data - in real app, fetch from backend
+    if (window.ordersChart) {
+        window.ordersChart.destroy();
+    }
+    
+    // Sample data
     const labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
     const data = [12, 19, 15, 25, 22, 30, 28];
     
@@ -330,7 +343,11 @@ function initPaymentStatusChart() {
     const ctx = document.getElementById('paymentStatusChart');
     if (!ctx) return;
     
-    // Sample data - in real app, fetch from backend
+    if (window.paymentStatusChart) {
+        window.paymentStatusChart.destroy();
+    }
+    
+    // Sample data
     const data = {
         labels: ['Paid', 'Unpaid', 'Cash on Delivery'],
         datasets: [{
@@ -369,57 +386,44 @@ function initPaymentStatusChart() {
     });
 }
 
-// Update charts with new data
-function updateCharts() {
-    // Update revenue chart
-    if (window.revenueChart) {
-        // Update with new data
-        // window.revenueChart.data.datasets[0].data = newData;
-        window.revenueChart.update();
-    }
-    
-    // Update other charts similarly
-}
-
 // Export stats report
 function exportStatsReport() {
     try {
-        // Create report content
         const reportDate = new Date().toLocaleDateString('en-IN');
         const reportContent = `
-            KUSWAR GIFTS - STATISTICS REPORT
-            Generated on: ${reportDate}
-            
-            ==================================
-            
-            OVERVIEW:
-            ---------
-            Today's Orders: ${statsData.today_orders || 0}
-            Monthly Revenue: ₹${(statsData.monthly_revenue || 0).toLocaleString()}
-            Pending Orders: ${statsData.unpaid_orders || 0}
-            Total Customers: ${statsData.total_customers || 0}
-            Total Orders: ${statsData.total_orders || 0}
-            Total Products: ${statsData.total_products || 0}
-            Average Order Value: ₹${(statsData.average_order_value || 0).toFixed(2)}
-            
-            ==================================
-            
-            PERFORMANCE SUMMARY:
-            --------------------
-            • Revenue growth: +8% this month
-            • Order growth: +15% this month
-            • Customer growth: +5% this month
-            
-            RECOMMENDATIONS:
-            ----------------
-            1. Focus on converting pending orders to paid
-            2. Consider adding more products in popular categories
-            3. Run promotions to boost weekend sales
-            
-            ==================================
-            
-            END OF REPORT
-        `;
+KUSWAR GIFTS - STATISTICS REPORT
+Generated on: ${reportDate}
+
+==================================
+
+OVERVIEW:
+---------
+Today's Orders: ${statsData.today_orders || 0}
+Monthly Revenue: ₹${(statsData.monthly_revenue || 0).toLocaleString('en-IN')}
+Pending Orders: ${statsData.unpaid_orders || 0}
+Total Customers: ${statsData.total_customers || 0}
+Total Orders: ${statsData.total_orders || 0}
+Total Products: ${statsData.total_products || 0}
+Average Order Value: ₹${(statsData.average_order_value || 0).toFixed(2)}
+
+==================================
+
+PERFORMANCE SUMMARY:
+--------------------
+• Revenue growth: +8% this month
+• Order growth: +15% this month
+• Customer growth: +5% this month
+
+RECOMMENDATIONS:
+----------------
+1. Focus on converting pending orders to paid
+2. Consider adding more products in popular categories
+3. Run promotions to boost weekend sales
+
+==================================
+
+END OF REPORT
+`;
         
         // Create blob and download
         const blob = new Blob([reportContent], { type: 'text/plain' });
@@ -441,11 +445,8 @@ function exportStatsReport() {
 
 // Initialize when page loads
 document.addEventListener('DOMContentLoaded', function() {
-    // Load Chart.js library
-    const script = document.createElement('script');
-    script.src = 'https://cdn.jsdelivr.net/npm/chart.js';
-    script.onload = function() {
-        initStatsPage();
-    };
-    document.head.appendChild(script);
+    initStatsPage();
 });
+
+// Make functions available globally
+window.exportStatsReport = exportStatsReport;
