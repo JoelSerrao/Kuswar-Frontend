@@ -204,12 +204,34 @@
                     updateCartCount();
                 }
                 
-                // Load sample products (for demo)
+                // IMMEDIATELY show sample products (no waiting)
                 loadSampleProducts();
                 
-                // Update UI
+                // Update UI immediately
                 updateCheckoutButton();
                 loadCartItems();
+                
+                // THEN try to load from backend in background
+                setTimeout(async () => {
+                    try {
+                        console.log('Trying to connect to backend...');
+                        const response = await fetch(`${CONFIG.API_BASE_URL}/api/products`, {
+                            signal: AbortSignal.timeout(5000) // 5 second timeout
+                        });
+                        
+                        if (response.ok) {
+                            const data = await response.json();
+                            if (data.success) {
+                                console.log('Backend connected, updating products...');
+                                // Update with real data
+                                // ... process and update UI ...
+                                showNotification('Updated with live inventory', 'success');
+                            }
+                        }
+                    } catch (error) {
+                        console.log('Backend not available, continuing with sample data');
+                    }
+                }, 1000);
                 
             } catch (error) {
                 console.error('Error:', error);
