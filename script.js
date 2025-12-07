@@ -733,6 +733,26 @@ window.addItemRow = addItemRow;
 window.removeItemRow = removeItemRow;
 window.updateItemPriceAndInfo = updateItemPriceAndInfo;
 
+// Add this debug function
+function debugItems() {
+    console.log("=== DEBUG ITEMS ===");
+    
+    document.querySelectorAll(".item-row").forEach((row, index) => {
+        console.log(`Row ${index + 1}:`);
+        console.log("- Category:", row.querySelector(".category-select")?.value);
+        console.log("- Product:", row.querySelector(".product-select")?.value);
+        console.log("- Quantity:", row.querySelector(".quantity")?.value);
+        console.log("- Price:", row.querySelector(".price")?.value);
+        console.log("- Product select enabled:", !row.querySelector(".product-select")?.disabled);
+        console.log("---");
+    });
+    
+    console.log("Total rows:", document.querySelectorAll(".item-row").length);
+}
+
+// Call this before form submission
+debugItems();
+
 // Form submission handler
 document.addEventListener("DOMContentLoaded", function() {
     const orderForm = document.getElementById("orderForm");
