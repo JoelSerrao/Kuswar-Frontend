@@ -345,57 +345,67 @@
         // Render products
         function renderProducts(containerId, products, category) {
             const container = document.getElementById(containerId);
+            if (!container) return;
+            
             container.innerHTML = '';
             
             products.forEach(product => {
                 const productId = product.ProductID;
+                const productName = product.ProductName;
+                const price = product.UniPrice || 0;
+                const stock = product.Stock || 0;
+                
                 const cartQuantity = cart[productId] ? cart[productId].quantity : 0;
                 
-                const productCard = document.createElement('div');
-                productCard.className = 'col-md-6 col-lg-4';
+                const productRow = document.createElement('div');
+                productRow.className = 'product-row-ultra d-flex justify-content-between align-items-center border-bottom py-2 px-2';
                 
-                productCard.innerHTML = `
-                    <div class="card product-card h-100 shadow-sm">
-                        <div class="card-body">
-                            <h5 class="card-title">${product.ProductName}</h5>
-                            <p class="card-text text-muted small mb-2">
-                                ${product.Description || 'No description available'}
-                            </p>
-                            <div class="d-flex justify-content-between align-items-center mb-3">
-                                <h4 class="text-primary mb-0">₹${product.UniPrice}</h4>
-                                <span class="badge ${product.Stock > 0 ? 'bg-success' : 'bg-danger'}">
-                                    ${product.Stock > 0 ? `Stock: ${product.Stock}` : 'Out of Stock'}
-                                </span>
-                            </div>
-                            
-                            <div class="quantity-control">
-                                <div class="input-group">
-                                    <button class="btn btn-outline-primary" type="button" 
-                                            onclick="removeFromCart('${productId}')"
-                                            ${cartQuantity === 0 ? 'disabled' : ''}>
-                                        <i class="fas fa-minus"></i>
-                                    </button>
-                                    
-                                    <input type="number" 
-                                           class="form-control text-center quantity-input" 
-                                           data-product-id="${productId}"
-                                           value="${cartQuantity}"
-                                           min="0"
-                                           max="${product.Stock}"
-                                           onchange="updateProductQuantity('${productId}', this.value)">
-                                    
-                                    <button class="btn btn-outline-primary" type="button" 
-                                            onclick="addToCart('${productId}', '${product.ProductName.replace(/'/g, "\\'")}', ${product.UniPrice}, '${category.replace(/'/g, "\\'")}')"
-                                            ${product.Stock === 0 ? 'disabled' : ''}>
-                                        <i class="fas fa-plus"></i>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
+                productRow.innerHTML = `
+                    <!-- Product Name -->
+                    <div class="product-name-ultra" style="flex: 2; min-width: 150px;">
+                        <span class="fw-medium">${productName}</span>
+                    </div>
+                    
+                    <!-- Quantity Controls -->
+                    <div class="quantity-controls-ultra d-flex align-items-center" style="flex: 2;">
+                        <button class="btn btn-outline-primary btn-sm px-2 me-1" type="button" 
+                                onclick="removeFromCart('${productId}')"
+                                ${cartQuantity === 0 ? 'disabled' : ''}
+                                style="min-width: 32px;">
+                            <i class="fas fa-minus"></i>
+                        </button>
+                        
+                        <input type="number" 
+                               class="form-control form-control-sm text-center mx-1" 
+                               data-product-id="${productId}"
+                               value="${cartQuantity}"
+                               min="0"
+                               max="${stock}"
+                               onchange="updateProductQuantity('${productId}', this.value)"
+                               style="width: 50px;">
+                        
+                        <button class="btn btn-outline-primary btn-sm px-2 ms-1" type="button" 
+                                onclick="addToCart('${productId}', '${productName.replace(/'/g, "\\'")}', ${price}, '${category.replace(/'/g, "\\'")}')"
+                                ${stock === 0 ? 'disabled' : ''}
+                                style="min-width: 32px;">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                    </div>
+                    
+                    <!-- Price -->
+                    <div class="text-center" style="flex: 1;">
+                        <span class="fw-bold text-primary">₹${price}</span>
+                    </div>
+                    
+                    <!-- Stock -->
+                    <div class="text-end" style="flex: 1;">
+                        <span class="badge ${stock > 0 ? 'bg-light text-dark border' : 'bg-danger'}">
+                            ${stock > 0 ? stock : 'Out'}
+                        </span>
                     </div>
                 `;
                 
-                container.appendChild(productCard);
+                container.appendChild(productRow);
             });
         }
 
