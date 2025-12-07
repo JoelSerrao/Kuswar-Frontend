@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kuswar - Checkout</title>
+    <!-- Bootstrap 5 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- Navigation (same as homepage) -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm fixed-top">
+        <div class="container">
+            <a class="navbar-brand" href="index.html">
+                <i class="fas fa-gift"></i> Kuswar Gifts
+            </a>
+            
+            <!-- Hamburger Menu -->
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            
+            <!-- Navigation Links -->
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="index.html">
+                            <i class="fas fa-home"></i> Home
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="checkout.html">
+                            <i class="fas fa-shopping-cart"></i> Checkout
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="orders.html">
+                            <i class="fas fa-history"></i> Recent Orders
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="stats.html">
+                            <i class="fas fa-chart-bar"></i> Stats
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container mt-5 pt-4">
+        <div class="row">
+            <!-- Left Column: Customer Details -->
+            <div class="col-lg-6 mb-4">
+                <div class="card shadow">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">
+                            <i class="fas fa-user-circle"></i> Customer Details
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <form id="customerForm">
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label class="form-label">Customer Name *</label>
+                                    <input type="text" class="form-control" id="customerName" required>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Phone Number *</label>
+                                    <input type="tel" class="form-control" id="customerPhone" required>
+                                </div>
+                            </div>
+                            
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label class="form-label">City *</label>
+                                    <select class="form-control" id="citySelect" required>
+                                        <option value="">Select City</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Area *</label>
+                                    <input type="text" class="form-control" id="areaInput" 
+                                           list="areaSuggestions" required>
+                                    <datalist id="areaSuggestions"></datalist>
+                                </div>
+                            </div>
+                            
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label class="form-label">Delivery Date</label>
+                                    <input type="date" class="form-control" id="deliveryDate">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Payment Status</label>
+                                    <select class="form-control" id="paymentStatus">
+                                        <option value="Unpaid">Unpaid</option>
+                                        <option value="Paid">Paid</option>
+                                        <option value="Cash on Delivery">Cash on Delivery</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div id="paidToContainer" class="mb-3" style="display: none;">
+                                <label class="form-label">Paid To</label>
+                                <input type="text" class="form-control" id="paidTo" 
+                                       placeholder="Enter recipient name">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">Notes</label>
+                                <textarea class="form-control" id="orderNotes" rows="3"></textarea>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Right Column: Order Summary -->
+            <div class="col-lg-6">
+                <div class="card shadow">
+                    <div class="card-header bg-dark text-white">
+                        <h5 class="mb-0">
+                            <i class="fas fa-receipt"></i> Order Summary
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="orderSummary">
+                            <!-- Order items will be loaded here -->
+                        </div>
+                        
+                        <div class="border-top pt-3 mt-3">
+                            <div class="d-flex justify-content-between mb-2">
+                                <span>Subtotal:</span>
+                                <span id="subtotal">₹0.00</span>
+                            </div>
+                            <div class="d-flex justify-content-between mb-3">
+                                <h5>Total:</h5>
+                                <h4 class="text-primary" id="orderTotal">₹0.00</h4>
+                            </div>
+                            
+                            <button class="btn btn-primary btn-lg w-100" onclick="placeOrder()">
+                                <i class="fas fa-check-circle"></i> Place Order
+                            </button>
+                            
+                            <button class="btn btn-outline-secondary w-100 mt-2" onclick="window.location.href='index.html'">
+                                <i class="fas fa-shopping-bag"></i> Continue Shopping
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container position-fixed bottom-0 end-0 p-3"></div>
+
+    <!-- Bootstrap & Custom JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="js/app.js"></script>
+    <script src="js/checkout.js"></script>
+</body>
+</html>
