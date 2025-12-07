@@ -1,6 +1,11 @@
 // Homepage specific functionality
+let cart = {};
+
 async function initHomepage() {
     try {
+        // Initialize cart from localStorage
+        initCart();
+        
         // Load products grouped by category
         await loadProductsByCategory();
         
@@ -13,9 +18,51 @@ async function initHomepage() {
         // Setup category accordion behavior
         setupCategoryAccordion();
         
+        // Setup event listeners for cart updates
+        setupCartEventListeners();
+        
     } catch (error) {
         console.error('Error initializing homepage:', error);
         showNotification('Failed to load products. Please refresh.', 'danger');
+    }
+}
+
+// Initialize cart from localStorage
+function initCart() {
+    const savedCart = localStorage.getItem('kuswar_cart');
+    if (savedCart) {
+        cart = JSON.parse(savedCart);
+        updateCartCount();
+    }
+}
+
+// Save cart to localStorage
+function saveCart() {
+    localStorage.setItem('kuswar_cart', JSON.stringify(cart));
+    updateCartCount();
+    
+    // Dispatch event to update UI
+    const event = new CustomEvent('cartUpdated');
+    window.dispatchEvent(event);
+}
+
+// Setup event listeners for cart
+function setupCartEventListeners() {
+    // Listen for cart updates
+    window.addEventListener('cartUpdated', function() {
+        loadCartItems();
+        updateCheckoutButton();
+        updateAllProductQuantityDisplays();
+    });
+}
+
+// Update all product quantity displays
+function updateAllProductQuantityDisplays() {
+    for (const productId in cart) {
+        const input = document.querySelector(`input[data-product-id="${productId}"]`);
+        if (input) {
+            input.value = cart[productId].quantity;
+        }
     }
 }
 
@@ -28,12 +75,59 @@ async function loadProductsByCategory() {
         if (data.success) {
             renderCategories(data.data);
         } else {
-            throw new Error(data.error || 'Failed to load products');
+            // Fallback to all products endpoint
+            await loadAllProducts();
         }
     } catch (error) {
-        console.error('Error loading products:', error);
+        console.error('Error loading products by category:', error);
         showNotification('Failed to load products', 'warning');
+        await loadAllProducts(); // Fallback
     }
+}
+
+// Load all products as fallback
+async function loadAllProducts() {
+    try {
+        const response = await fetch(`${CONFIG.API_BASE_URL}/api/products`);
+        const data = await response.json();
+        
+        if (data.success) {
+            // Group products by category
+            const groupedProducts = {};
+            data.data.forEach(product => {
+                const category = product.Category || 'Uncategorized';
+                if (!groupedProducts[category]) {
+                    groupedProducts[category] = [];
+                }
+                groupedProducts[category].push(product);
+            });
+            
+            renderCategories(groupedProducts);
+        }
+    } catch (error) {
+        console.error('Error loading all products:', error);
+        loadSampleProducts();
+    }
+}
+
+// Load sample products for demo
+function loadSampleProducts() {
+    const sampleProducts = {
+        'Hamper': [
+            { ProductID: '1', ProductName: 'Family Pack', UniPrice: 1999, Stock: 10, Description: 'Premium hamper for family' },
+            { ProductID: '2', ProductName: 'Festival Hamper', UniPrice: 1499, Stock: 5, Description: 'Festival special hamper' }
+        ],
+        'Box': [
+            { ProductID: '3', ProductName: 'Chocolate Box', UniPrice: 599, Stock: 20, Description: 'Assorted chocolates' },
+            { ProductID: '4', ProductName: 'Dry Fruit Box', UniPrice: 899, Stock: 8, Description: 'Premium dry fruits' }
+        ],
+        'Goodies': [
+            { ProductID: '5', ProductName: 'Cookies Pack', UniPrice: 299, Stock: 15, Description: 'Homemade cookies' },
+            { ProductID: '6', ProductName: 'Sweets Box', UniPrice: 399, Stock: 12, Description: 'Traditional sweets' }
+        ]
+    };
+    
+    renderCategories(sampleProducts);
 }
 
 // Render categories and products
@@ -105,7 +199,11 @@ function renderProducts(containerId, products, category) {
     container.innerHTML = '';
     
     products.forEach(product => {
-        const productId = product.ProductID;
+        const productId = product.ProductID || product.id;
+        const productName = product.ProductName || product.name;
+        const price = product.UniPrice || product.price || 0;
+        const stock = product.Stock || product.stock || 0;
+        
         const cartQuantity = cart[productId] ? cart[productId].quantity : 0;
         
         const productCard = document.createElement('div');
@@ -114,36 +212,37 @@ function renderProducts(containerId, products, category) {
         productCard.innerHTML = `
             <div class="card product-card h-100 shadow-sm">
                 <div class="card-body">
-                    <h5 class="card-title">${product.ProductName}</h5>
+                    <h5 class="card-title">${productName}</h5>
                     <p class="card-text text-muted small mb-2">
-                        ${product.Description || 'No description available'}
+                        ${product.Description || product.description || 'No description available'}
                     </p>
                     <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h4 class="text-primary mb-0">₹${product.UniPrice}</h4>
-                        <span class="badge ${product.Stock > 0 ? 'bg-success' : 'bg-danger'}">
-                            ${product.Stock > 0 ? `Stock: ${product.Stock}` : 'Out of Stock'}
+                        <h4 class="text-primary mb-0">₹${price}</h4>
+                        <span class="badge ${stock > 0 ? 'bg-success' : 'bg-danger'}">
+                            ${stock > 0 ? `Stock: ${stock}` : 'Out of Stock'}
                         </span>
                     </div>
                     
                     <div class="quantity-control">
                         <div class="input-group">
                             <button class="btn btn-outline-primary" type="button" 
-                                    onclick="removeFromCart('${productId}')"
+                                    onclick="removeFromCart('${productId}', '${productName.replace(/'/g, "\\'")}', ${price}, '${category.replace(/'/g, "\\'")}')"
                                     ${cartQuantity === 0 ? 'disabled' : ''}>
                                 <i class="fas fa-minus"></i>
                             </button>
                             
                             <input type="number" 
                                    class="form-control text-center quantity-input" 
+                                   data-product-id="${productId}"
                                    value="${cartQuantity}"
                                    min="0"
-                                   max="${product.Stock}"
+                                   max="${stock}"
                                    onchange="updateProductQuantity('${productId}', this.value)"
-                                   oninput="validateQuantity(this, ${product.Stock})">
+                                   oninput="validateQuantity(this, ${stock})">
                             
                             <button class="btn btn-outline-primary" type="button" 
-                                    onclick="addToCart('${productId}', '${product.ProductName.replace(/'/g, "\\'")}', ${product.UniPrice}, '${category.replace(/'/g, "\\'")}')"
-                                    ${product.Stock === 0 ? 'disabled' : ''}>
+                                    onclick="addToCart('${productId}', '${productName.replace(/'/g, "\\'")}', ${price}, '${category.replace(/'/g, "\\'")}')"
+                                    ${stock === 0 ? 'disabled' : ''}>
                                 <i class="fas fa-plus"></i>
                             </button>
                         </div>
@@ -156,6 +255,74 @@ function renderProducts(containerId, products, category) {
     });
 }
 
+// Add to cart function (modified to update UI immediately)
+function addToCart(productId, productName, price, category) {
+    if (!cart[productId]) {
+        cart[productId] = {
+            id: productId,
+            name: productName,
+            price: price,
+            category: category,
+            quantity: 1
+        };
+    } else {
+        cart[productId].quantity += 1;
+    }
+    
+    saveCart();
+    showNotification(`${productName} added to cart`, 'success');
+}
+
+// Remove from cart function
+function removeFromCart(productId, productName, price, category) {
+    if (cart[productId]) {
+        if (cart[productId].quantity > 1) {
+            cart[productId].quantity -= 1;
+        } else {
+            delete cart[productId];
+        }
+        saveCart();
+        showNotification(`${productName} removed from cart`, 'info');
+    }
+}
+
+// Update product quantity directly from input
+function updateProductQuantity(productId, quantity) {
+    const qty = parseInt(quantity);
+    if (isNaN(qty) || qty < 0) {
+        if (cart[productId]) {
+            delete cart[productId];
+        }
+    } else if (qty === 0) {
+        if (cart[productId]) {
+            delete cart[productId];
+        }
+    } else {
+        if (!cart[productId]) {
+            // Find product info
+            const productInput = document.querySelector(`input[data-product-id="${productId}"]`);
+            if (productInput) {
+                const productCard = productInput.closest('.product-card');
+                const productName = productCard.querySelector('.card-title').textContent;
+                const price = parseFloat(productCard.querySelector('.text-primary').textContent.replace('₹', ''));
+                const category = productCard.closest('.accordion-item').querySelector('.accordion-button strong').textContent;
+                
+                cart[productId] = {
+                    id: productId,
+                    name: productName,
+                    price: price,
+                    category: category,
+                    quantity: qty
+                };
+            }
+        } else {
+            cart[productId].quantity = qty;
+        }
+    }
+    
+    saveCart();
+}
+
 // Validate quantity input
 function validateQuantity(input, maxStock) {
     let value = parseInt(input.value);
@@ -165,20 +332,6 @@ function validateQuantity(input, maxStock) {
         input.value = maxStock;
         showNotification(`Maximum stock available: ${maxStock}`, 'warning');
     }
-}
-
-// Update product quantity directly from input
-function updateProductQuantity(productId, quantity) {
-    const qty = parseInt(quantity);
-    if (isNaN(qty) || qty < 0) {
-        updateCartQuantity(productId, 0);
-    } else {
-        updateCartQuantity(productId, qty);
-    }
-    
-    // Refresh the display
-    loadCartItems();
-    updateCheckoutButton();
 }
 
 // Load cart items into offcanvas
@@ -253,16 +406,24 @@ function updateCheckoutButton() {
     const total = getCartTotal();
     const hasItems = Object.keys(cart).length > 0;
     
-    checkoutBtn.disabled = !hasItems;
-    cartTotalBadge.textContent = `₹${total.toFixed(2)}`;
-    
     if (hasItems) {
+        checkoutBtn.disabled = false;
         checkoutBtn.classList.remove('btn-secondary');
         checkoutBtn.classList.add('btn-primary');
+        cartTotalBadge.textContent = `₹${total.toFixed(2)}`;
     } else {
+        checkoutBtn.disabled = true;
         checkoutBtn.classList.remove('btn-primary');
         checkoutBtn.classList.add('btn-secondary');
+        cartTotalBadge.textContent = '₹0';
     }
+}
+
+// Get cart total
+function getCartTotal() {
+    return Object.values(cart).reduce((total, item) => {
+        return total + (item.price * item.quantity);
+    }, 0);
 }
 
 // Proceed to checkout
@@ -277,6 +438,23 @@ function proceedToCheckout() {
     
     // Redirect to checkout page
     window.location.href = 'checkout.html';
+}
+
+// Clear cart
+function clearCart() {
+    cart = {};
+    saveCart();
+    showNotification('Cart cleared', 'info');
+}
+
+// Update cart count in navigation
+function updateCartCount() {
+    const cartCount = document.getElementById('cartCount');
+    if (cartCount) {
+        const totalItems = Object.values(cart).reduce((sum, item) => sum + item.quantity, 0);
+        cartCount.textContent = totalItems;
+        cartCount.style.display = totalItems > 0 ? 'inline-block' : 'none';
+    }
 }
 
 // Setup category accordion behavior
@@ -299,10 +477,12 @@ function setupCategoryAccordion() {
 // Initialize when page loads
 document.addEventListener('DOMContentLoaded', function() {
     initHomepage();
-    
-    // Update cart when it changes
-    window.addEventListener('cartUpdated', function() {
-        loadCartItems();
-        updateCheckoutButton();
-    });
 });
+
+// Make functions available globally
+window.addToCart = addToCart;
+window.removeFromCart = removeFromCart;
+window.updateProductQuantity = updateProductQuantity;
+window.validateQuantity = validateQuantity;
+window.proceedToCheckout = proceedToCheckout;
+window.clearCart = clearCart;
