@@ -1,29 +1,34 @@
 // Homepage specific functionality
 let cart = {};
 
+// Initialize when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    initHomepage();
+});
+
 async function initHomepage() {
     try {
+        console.log('Initializing homepage...');
+        
         // Initialize cart from localStorage
         initCart();
         
-        // Load products grouped by category
-        await loadProductsByCategory();
+        // Load products (using fallback method since API endpoint might not exist)
+        await loadProducts();
         
-        // Update checkout button state
+        // Update UI
         updateCheckoutButton();
-        
-        // Load cart items into offcanvas
         loadCartItems();
         
-        // Setup category accordion behavior
+        // Setup accordion
         setupCategoryAccordion();
         
-        // Setup event listeners for cart updates
+        // Setup event listeners
         setupCartEventListeners();
         
     } catch (error) {
         console.error('Error initializing homepage:', error);
-        showNotification('Failed to load products. Please refresh.', 'danger');
+        loadSampleProducts(); // Load sample data on error
     }
 }
 
@@ -31,9 +36,15 @@ async function initHomepage() {
 function initCart() {
     const savedCart = localStorage.getItem('kuswar_cart');
     if (savedCart) {
-        cart = JSON.parse(savedCart);
-        updateCartCount();
+        try {
+            cart = JSON.parse(savedCart);
+            updateCartCount();
+        } catch (e) {
+            cart = {};
+            localStorage.removeItem('kuswar_cart');
+        }
     }
+    updateCartCount();
 }
 
 // Save cart to localStorage
@@ -41,12 +52,23 @@ function saveCart() {
     localStorage.setItem('kuswar_cart', JSON.stringify(cart));
     updateCartCount();
     
-    // Dispatch event to update UI
-    const event = new CustomEvent('cartUpdated');
-    window.dispatchEvent(event);
+    // Update UI
+    loadCartItems();
+    updateCheckoutButton();
+    updateAllProductQuantityDisplays();
 }
 
-// Setup event listeners for cart
+// Update cart count in navigation
+function updateCartCount() {
+    const cartCount = document.getElementById('cartCount');
+    if (cartCount) {
+        const totalItems = Object.values(cart).reduce((sum, item) => sum + (item.quantity || 0), 0);
+        cartCount.textContent = totalItems;
+        cartCount.style.display = totalItems > 0 ? 'inline-block' : 'none';
+    }
+}
+
+// Setup event listeners
 function setupCartEventListeners() {
     // Listen for cart updates
     window.addEventListener('cartUpdated', function() {
@@ -66,64 +88,92 @@ function updateAllProductQuantityDisplays() {
     }
 }
 
-// Load products grouped by category
-async function loadProductsByCategory() {
+// Load products
+async function loadProducts() {
     try {
-        const response = await fetch(`${CONFIG.API_BASE_URL}/api/products/grouped-by-category`);
-        const data = await response.json();
+        // Try multiple endpoints
+        const endpoints = [
+            '/api/products/grouped-by-category',
+            '/api/products/by-category/all',
+            '/api/products'
+        ];
         
-        if (data.success) {
-            renderCategories(data.data);
-        } else {
-            // Fallback to all products endpoint
-            await loadAllProducts();
-        }
-    } catch (error) {
-        console.error('Error loading products by category:', error);
-        showNotification('Failed to load products', 'warning');
-        await loadAllProducts(); // Fallback
-    }
-}
-
-// Load all products as fallback
-async function loadAllProducts() {
-    try {
-        const response = await fetch(`${CONFIG.API_BASE_URL}/api/products`);
-        const data = await response.json();
+        let data = null;
         
-        if (data.success) {
-            // Group products by category
-            const groupedProducts = {};
-            data.data.forEach(product => {
-                const category = product.Category || 'Uncategorized';
-                if (!groupedProducts[category]) {
-                    groupedProducts[category] = [];
+        for (const endpoint of endpoints) {
+            try {
+                const response = await fetch(`${CONFIG.API_BASE_URL}${endpoint}`);
+                if (response.ok) {
+                    const result = await response.json();
+                    if (result.success && result.data) {
+                        data = result.data;
+                        console.log(`Loaded products from ${endpoint}`);
+                        break;
+                    }
                 }
-                groupedProducts[category].push(product);
-            });
-            
-            renderCategories(groupedProducts);
+            } catch (e) {
+                console.log(`Failed to load from ${endpoint}:`, e.message);
+            }
         }
+        
+        if (data) {
+            // Check data structure and render
+            if (Array.isArray(data)) {
+                // If data is array, group by category
+                renderCategories(groupProductsByCategory(data));
+            } else if (typeof data === 'object') {
+                // If data is already grouped by category
+                renderCategories(data);
+            } else {
+                throw new Error('Invalid data format');
+            }
+        } else {
+            throw new Error('No data received');
+        }
+        
     } catch (error) {
-        console.error('Error loading all products:', error);
+        console.error('Error loading products:', error);
         loadSampleProducts();
     }
 }
 
+// Group products by category
+function groupProductsByCategory(products) {
+    const grouped = {};
+    products.forEach(product => {
+        const category = product.Category || 'Uncategorized';
+        if (!grouped[category]) {
+            grouped[category] = [];
+        }
+        grouped[category].push({
+            ProductID: product.ProductID || product.id,
+            ProductName: product.ProductName || product.name,
+            UniPrice: product.UniPrice || product.price || 0,
+            Stock: product.Stock || product.stock || 10,
+            Description: product.Description || ''
+        });
+    });
+    return grouped;
+}
+
 // Load sample products for demo
 function loadSampleProducts() {
+    console.log('Loading sample products...');
     const sampleProducts = {
         'Hamper': [
             { ProductID: '1', ProductName: 'Family Pack', UniPrice: 1999, Stock: 10, Description: 'Premium hamper for family' },
-            { ProductID: '2', ProductName: 'Festival Hamper', UniPrice: 1499, Stock: 5, Description: 'Festival special hamper' }
+            { ProductID: '2', ProductName: 'Festival Hamper', UniPrice: 1499, Stock: 5, Description: 'Festival special hamper' },
+            { ProductID: '3', ProductName: 'Corporate Hamper', UniPrice: 2999, Stock: 8, Description: 'Corporate gifting hamper' }
         ],
         'Box': [
-            { ProductID: '3', ProductName: 'Chocolate Box', UniPrice: 599, Stock: 20, Description: 'Assorted chocolates' },
-            { ProductID: '4', ProductName: 'Dry Fruit Box', UniPrice: 899, Stock: 8, Description: 'Premium dry fruits' }
+            { ProductID: '4', ProductName: 'Chocolate Box', UniPrice: 599, Stock: 20, Description: 'Assorted chocolates' },
+            { ProductID: '5', ProductName: 'Dry Fruit Box', UniPrice: 899, Stock: 15, Description: 'Premium dry fruits' },
+            { ProductID: '6', ProductName: 'Sweets Box', UniPrice: 499, Stock: 25, Description: 'Traditional sweets' }
         ],
         'Goodies': [
-            { ProductID: '5', ProductName: 'Cookies Pack', UniPrice: 299, Stock: 15, Description: 'Homemade cookies' },
-            { ProductID: '6', ProductName: 'Sweets Box', UniPrice: 399, Stock: 12, Description: 'Traditional sweets' }
+            { ProductID: '7', ProductName: 'Cookies Pack', UniPrice: 299, Stock: 30, Description: 'Homemade cookies' },
+            { ProductID: '8', ProductName: 'Biscuit Tin', UniPrice: 399, Stock: 18, Description: 'Assorted biscuits' },
+            { ProductID: '9', ProductName: 'Snack Pack', UniPrice: 249, Stock: 22, Description: 'Mixed snacks' }
         ]
     };
     
@@ -199,10 +249,10 @@ function renderProducts(containerId, products, category) {
     container.innerHTML = '';
     
     products.forEach(product => {
-        const productId = product.ProductID || product.id;
-        const productName = product.ProductName || product.name;
-        const price = product.UniPrice || product.price || 0;
-        const stock = product.Stock || product.stock || 0;
+        const productId = product.ProductID;
+        const productName = product.ProductName;
+        const price = product.UniPrice || 0;
+        const stock = product.Stock || 0;
         
         const cartQuantity = cart[productId] ? cart[productId].quantity : 0;
         
@@ -214,7 +264,7 @@ function renderProducts(containerId, products, category) {
                 <div class="card-body">
                     <h5 class="card-title">${productName}</h5>
                     <p class="card-text text-muted small mb-2">
-                        ${product.Description || product.description || 'No description available'}
+                        ${product.Description || 'No description available'}
                     </p>
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <h4 class="text-primary mb-0">₹${price}</h4>
@@ -226,7 +276,7 @@ function renderProducts(containerId, products, category) {
                     <div class="quantity-control">
                         <div class="input-group">
                             <button class="btn btn-outline-primary" type="button" 
-                                    onclick="removeFromCart('${productId}', '${productName.replace(/'/g, "\\'")}', ${price}, '${category.replace(/'/g, "\\'")}')"
+                                    onclick="homepageRemoveFromCart('${productId}')"
                                     ${cartQuantity === 0 ? 'disabled' : ''}>
                                 <i class="fas fa-minus"></i>
                             </button>
@@ -237,11 +287,11 @@ function renderProducts(containerId, products, category) {
                                    value="${cartQuantity}"
                                    min="0"
                                    max="${stock}"
-                                   onchange="updateProductQuantity('${productId}', this.value)"
+                                   onchange="homepageUpdateQuantity('${productId}', this.value)"
                                    oninput="validateQuantity(this, ${stock})">
                             
                             <button class="btn btn-outline-primary" type="button" 
-                                    onclick="addToCart('${productId}', '${productName.replace(/'/g, "\\'")}', ${price}, '${category.replace(/'/g, "\\'")}')"
+                                    onclick="homepageAddToCart('${productId}', '${productName.replace(/'/g, "\\'")}', ${price}, '${category.replace(/'/g, "\\'")}')"
                                     ${stock === 0 ? 'disabled' : ''}>
                                 <i class="fas fa-plus"></i>
                             </button>
@@ -255,8 +305,8 @@ function renderProducts(containerId, products, category) {
     });
 }
 
-// Add to cart function (modified to update UI immediately)
-function addToCart(productId, productName, price, category) {
+// Add to cart function
+function homepageAddToCart(productId, productName, price, category) {
     if (!cart[productId]) {
         cart[productId] = {
             id: productId,
@@ -274,20 +324,21 @@ function addToCart(productId, productName, price, category) {
 }
 
 // Remove from cart function
-function removeFromCart(productId, productName, price, category) {
-    if (cart[productId]) {
-        if (cart[productId].quantity > 1) {
-            cart[productId].quantity -= 1;
+function homepageRemoveFromCart(productId) {
+    const item = cart[productId];
+    if (item) {
+        if (item.quantity > 1) {
+            item.quantity -= 1;
         } else {
             delete cart[productId];
         }
         saveCart();
-        showNotification(`${productName} removed from cart`, 'info');
+        showNotification(`${item.name} removed from cart`, 'info');
     }
 }
 
-// Update product quantity directly from input
-function updateProductQuantity(productId, quantity) {
+// Update product quantity
+function homepageUpdateQuantity(productId, quantity) {
     const qty = parseInt(quantity);
     if (isNaN(qty) || qty < 0) {
         if (cart[productId]) {
@@ -300,16 +351,16 @@ function updateProductQuantity(productId, quantity) {
     } else {
         if (!cart[productId]) {
             // Find product info
-            const productInput = document.querySelector(`input[data-product-id="${productId}"]`);
-            if (productInput) {
-                const productCard = productInput.closest('.product-card');
-                const productName = productCard.querySelector('.card-title').textContent;
-                const price = parseFloat(productCard.querySelector('.text-primary').textContent.replace('₹', ''));
-                const category = productCard.closest('.accordion-item').querySelector('.accordion-button strong').textContent;
+            const input = document.querySelector(`input[data-product-id="${productId}"]`);
+            if (input) {
+                const card = input.closest('.product-card');
+                const name = card.querySelector('.card-title').textContent;
+                const price = parseFloat(card.querySelector('.text-primary').textContent.replace('₹', ''));
+                const category = card.closest('.accordion-item').querySelector('.accordion-button strong').textContent;
                 
                 cart[productId] = {
                     id: productId,
-                    name: productName,
+                    name: name,
                     price: price,
                     category: category,
                     quantity: qty
@@ -375,14 +426,14 @@ function loadCartItems() {
                         <h6 class="text-primary mb-1">₹${itemTotal.toFixed(2)}</h6>
                         <div class="btn-group btn-group-sm">
                             <button class="btn btn-outline-secondary" 
-                                    onclick="updateProductQuantity('${item.id}', ${item.quantity - 1})">
+                                    onclick="homepageUpdateQuantity('${item.id}', ${item.quantity - 1})">
                                 <i class="fas fa-minus"></i>
                             </button>
                             <button class="btn btn-outline-secondary" disabled>
                                 ${item.quantity}
                             </button>
                             <button class="btn btn-outline-secondary" 
-                                    onclick="updateProductQuantity('${item.id}', ${item.quantity + 1})">
+                                    onclick="homepageUpdateQuantity('${item.id}', ${item.quantity + 1})">
                                 <i class="fas fa-plus"></i>
                             </button>
                         </div>
@@ -406,16 +457,15 @@ function updateCheckoutButton() {
     const total = getCartTotal();
     const hasItems = Object.keys(cart).length > 0;
     
+    checkoutBtn.disabled = !hasItems;
+    cartTotalBadge.textContent = `₹${total.toFixed(2)}`;
+    
     if (hasItems) {
-        checkoutBtn.disabled = false;
         checkoutBtn.classList.remove('btn-secondary');
         checkoutBtn.classList.add('btn-primary');
-        cartTotalBadge.textContent = `₹${total.toFixed(2)}`;
     } else {
-        checkoutBtn.disabled = true;
         checkoutBtn.classList.remove('btn-primary');
         checkoutBtn.classList.add('btn-secondary');
-        cartTotalBadge.textContent = '₹0';
     }
 }
 
@@ -447,20 +497,11 @@ function clearCart() {
     showNotification('Cart cleared', 'info');
 }
 
-// Update cart count in navigation
-function updateCartCount() {
-    const cartCount = document.getElementById('cartCount');
-    if (cartCount) {
-        const totalItems = Object.values(cart).reduce((sum, item) => sum + item.quantity, 0);
-        cartCount.textContent = totalItems;
-        cartCount.style.display = totalItems > 0 ? 'inline-block' : 'none';
-    }
-}
-
 // Setup category accordion behavior
 function setupCategoryAccordion() {
     // Add event listener to all accordion buttons
-    document.querySelectorAll('.accordion-button').forEach(button => {
+    const accordionButtons = document.querySelectorAll('.accordion-button');
+    accordionButtons.forEach(button => {
         button.addEventListener('click', function() {
             const icon = this.querySelector('i');
             if (icon) {
@@ -474,15 +515,10 @@ function setupCategoryAccordion() {
     });
 }
 
-// Initialize when page loads
-document.addEventListener('DOMContentLoaded', function() {
-    initHomepage();
-});
-
 // Make functions available globally
-window.addToCart = addToCart;
-window.removeFromCart = removeFromCart;
-window.updateProductQuantity = updateProductQuantity;
+window.homepageAddToCart = homepageAddToCart;
+window.homepageRemoveFromCart = homepageRemoveFromCart;
+window.homepageUpdateQuantity = homepageUpdateQuantity;
 window.validateQuantity = validateQuantity;
 window.proceedToCheckout = proceedToCheckout;
 window.clearCart = clearCart;

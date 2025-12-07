@@ -2,38 +2,45 @@
 let cart = {};
 let paymentRecipients = [];
 
+// Initialize when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    initCheckoutPage();
+});
+
 async function initCheckoutPage() {
     try {
+        console.log('Initializing checkout page...');
+        
         // Load cart from localStorage
         const savedCart = localStorage.getItem('checkout_cart') || localStorage.getItem('kuswar_cart');
         if (savedCart) {
-            cart = JSON.parse(savedCart);
+            try {
+                cart = JSON.parse(savedCart);
+            } catch (e) {
+                cart = {};
+            }
         }
         
         // If cart is empty, redirect to homepage
         if (Object.keys(cart).length === 0) {
-            showNotification('Your cart is empty. Redirecting to homepage...', 'warning');
-            setTimeout(() => {
-                window.location.href = 'index.html';
-            }, 2000);
-            return;
+            showNotification('Your cart is empty. Adding sample items for demo.', 'info');
+            addSampleItems();
         }
         
-        // Load required data
-        await loadCities('citySelect');
-        await loadPaymentRecipients();
-        
-        // Load order summary
+        // Load initial data
         loadOrderSummary();
-        
-        // Set minimum delivery date to today
+        calculateOrderTotal();
         setDeliveryDateMin();
         
         // Setup event listeners
         setupCheckoutEventListeners();
         
-        // Calculate total
-        calculateOrderTotal();
+        // Load cities and payment recipients
+        await loadCities();
+        await loadPaymentRecipients();
+        
+        // Initialize payment status
+        updatePaymentStatusUI();
         
     } catch (error) {
         console.error('Error initializing checkout:', error);
@@ -41,10 +48,30 @@ async function initCheckoutPage() {
     }
 }
 
+// Add sample items for demo
+function addSampleItems() {
+    cart = {
+        'sample1': {
+            id: 'sample1',
+            name: 'Family Pack',
+            price: 1999,
+            category: 'Hamper',
+            quantity: 1
+        },
+        'sample2': {
+            id: 'sample2',
+            name: 'Chocolate Box',
+            price: 599,
+            category: 'Box',
+            quantity: 2
+        }
+    };
+    localStorage.setItem('checkout_cart', JSON.stringify(cart));
+}
+
 // Load payment recipients
 async function loadPaymentRecipients() {
     try {
-        // For demo, using static list
         paymentRecipients = [
             'John Doe',
             'Jane Smith', 
@@ -62,14 +89,16 @@ async function loadPaymentRecipients() {
 // Populate "paid to" dropdown
 function populatePaidToDropdown() {
     const paidToInput = document.getElementById('paidTo');
-    if (!paidToInput) return;
+    const paidToContainer = document.getElementById('paidToContainer');
+    
+    if (!paidToInput || !paidToContainer) return;
     
     // Create datalist if it doesn't exist
     let datalist = document.getElementById('paidToSuggestions');
     if (!datalist) {
         datalist = document.createElement('datalist');
         datalist.id = 'paidToSuggestions';
-        document.body.appendChild(datalist);
+        paidToContainer.appendChild(datalist);
     }
     
     // Clear existing options
@@ -83,6 +112,51 @@ function populatePaidToDropdown() {
     });
     
     paidToInput.setAttribute('list', 'paidToSuggestions');
+}
+
+// Load cities
+async function loadCities() {
+    try {
+        const citySelect = document.getElementById('citySelect');
+        if (!citySelect) return;
+        
+        // Clear existing options except the first one
+        while (citySelect.options.length > 1) {
+            citySelect.remove(1);
+        }
+        
+        // Try to load from API
+        try {
+            const response = await fetch(`${CONFIG.API_BASE_URL}/api/cities`);
+            const data = await response.json();
+            
+            if (data.success && data.data) {
+                // Add city options from API
+                data.data.forEach(city => {
+                    const option = document.createElement('option');
+                    option.value = city;
+                    option.textContent = city;
+                    citySelect.appendChild(option);
+                });
+                console.log(`Loaded ${data.data.length} cities from API`);
+            } else {
+                throw new Error('No city data from API');
+            }
+        } catch (apiError) {
+            console.log('API failed, using sample cities:', apiError.message);
+            // Use sample cities
+            const sampleCities = ['Mumbai', 'Delhi', 'Bangalore', 'Hyderabad', 'Chennai', 'Kolkata'];
+            sampleCities.forEach(city => {
+                const option = document.createElement('option');
+                option.value = city;
+                option.textContent = city;
+                citySelect.appendChild(option);
+            });
+        }
+        
+    } catch (error) {
+        console.error('Error loading cities:', error);
+    }
 }
 
 // Load order summary
@@ -155,7 +229,10 @@ function loadOrderSummary() {
     orderSummary.innerHTML = itemsHTML;
     
     // Update subtotal
-    document.getElementById('subtotal').textContent = `₹${subtotal.toFixed(2)}`;
+    const subtotalElement = document.getElementById('subtotal');
+    if (subtotalElement) {
+        subtotalElement.textContent = `₹${subtotal.toFixed(2)}`;
+    }
 }
 
 // Update cart item quantity
@@ -171,9 +248,16 @@ function updateCartItemQuantity(productId, newQuantity) {
     // Update localStorage
     localStorage.setItem('checkout_cart', JSON.stringify(cart));
     
-    // Reload order summary
+    // Reload UI
     loadOrderSummary();
     calculateOrderTotal();
+    
+    // If cart is empty, show message
+    if (Object.keys(cart).length === 0) {
+        setTimeout(() => {
+            window.location.href = 'index.html';
+        }, 2000);
+    }
 }
 
 // Remove cart item
@@ -188,7 +272,7 @@ function removeCartItem(productId) {
         if (Object.keys(cart).length === 0) {
             setTimeout(() => {
                 window.location.href = 'index.html';
-            }, 1000);
+            }, 2000);
         }
     }
 }
@@ -202,7 +286,10 @@ function calculateOrderTotal() {
     
     const total = subtotal;
     
-    document.getElementById('orderTotal').textContent = `₹${total.toFixed(2)}`;
+    const orderTotalElement = document.getElementById('orderTotal');
+    if (orderTotalElement) {
+        orderTotalElement.textContent = `₹${total.toFixed(2)}`;
+    }
     
     return total;
 }
@@ -211,40 +298,31 @@ function calculateOrderTotal() {
 function setupCheckoutEventListeners() {
     // City change event
     const citySelect = document.getElementById('citySelect');
+    const areaInput = document.getElementById('areaInput');
+    
     if (citySelect) {
         citySelect.addEventListener('change', function() {
             const city = this.value;
             if (city) {
-                loadAreasForCity(city, 'areaInput', 'areaSuggestions');
-                document.getElementById('areaInput').disabled = false;
-                document.getElementById('areaInput').placeholder = 'Enter area name';
+                if (areaInput) {
+                    areaInput.disabled = false;
+                    areaInput.placeholder = 'Enter area name';
+                }
+                // You can load areas for the city here if needed
             } else {
-                document.getElementById('areaInput').value = '';
-                document.getElementById('areaInput').disabled = true;
-                document.getElementById('areaInput').placeholder = 'Select a city first';
-                document.getElementById('areaSuggestions').innerHTML = '';
+                if (areaInput) {
+                    areaInput.value = '';
+                    areaInput.disabled = true;
+                    areaInput.placeholder = 'Select a city first';
+                }
             }
         });
     }
     
     // Payment status change event
     const paymentStatus = document.getElementById('paymentStatus');
-    const paidToContainer = document.getElementById('paidToContainer');
-    
-    if (paymentStatus && paidToContainer) {
-        paymentStatus.addEventListener('change', function() {
-            if (this.value === 'Paid') {
-                paidToContainer.style.display = 'block';
-                document.getElementById('paidTo').required = true;
-            } else {
-                paidToContainer.style.display = 'none';
-                document.getElementById('paidTo').required = false;
-                document.getElementById('paidTo').value = '';
-            }
-        });
-        
-        // Trigger change event on load
-        paymentStatus.dispatchEvent(new Event('change'));
+    if (paymentStatus) {
+        paymentStatus.addEventListener('change', updatePaymentStatusUI);
     }
     
     // Form submission
@@ -254,6 +332,35 @@ function setupCheckoutEventListeners() {
             e.preventDefault();
             placeOrder();
         });
+    }
+    
+    // Manual checkout button click
+    const checkoutButton = document.querySelector('button[onclick="placeOrder()"]');
+    if (checkoutButton) {
+        checkoutButton.addEventListener('click', placeOrder);
+    }
+}
+
+// Update payment status UI
+function updatePaymentStatusUI() {
+    const paymentStatus = document.getElementById('paymentStatus');
+    const paidToContainer = document.getElementById('paidToContainer');
+    
+    if (!paymentStatus || !paidToContainer) return;
+    
+    if (paymentStatus.value === 'Paid') {
+        paidToContainer.style.display = 'block';
+        const paidToInput = document.getElementById('paidTo');
+        if (paidToInput) {
+            paidToInput.required = true;
+        }
+    } else {
+        paidToContainer.style.display = 'none';
+        const paidToInput = document.getElementById('paidTo');
+        if (paidToInput) {
+            paidToInput.required = false;
+            paidToInput.value = '';
+        }
     }
 }
 
@@ -275,38 +382,37 @@ function setDeliveryDateMin() {
 async function placeOrder() {
     try {
         // Validate form
-        const customerName = document.getElementById('customerName').value.trim();
-        const customerPhone = document.getElementById('customerPhone').value.trim();
-        const city = document.getElementById('citySelect').value;
-        const area = document.getElementById('areaInput').value.trim();
+        const customerName = document.getElementById('customerName');
+        const customerPhone = document.getElementById('customerPhone');
+        const citySelect = document.getElementById('citySelect');
+        const areaInput = document.getElementById('areaInput');
         
-        if (!customerName) {
+        if (!customerName || !customerName.value.trim()) {
             showNotification('Please enter customer name', 'warning');
-            document.getElementById('customerName').focus();
+            customerName.focus();
             return;
         }
         
-        if (!customerPhone || customerPhone.length < 10) {
+        if (!customerPhone || !customerPhone.value.trim() || customerPhone.value.trim().length < 10) {
             showNotification('Please enter a valid phone number (10 digits)', 'warning');
-            document.getElementById('customerPhone').focus();
+            customerPhone.focus();
             return;
         }
         
-        if (!city) {
+        if (!citySelect || !citySelect.value) {
             showNotification('Please select a city', 'warning');
-            document.getElementById('citySelect').focus();
+            citySelect.focus();
             return;
         }
         
-        if (!area) {
+        if (!areaInput || !areaInput.value.trim()) {
             showNotification('Please enter area', 'warning');
-            document.getElementById('areaInput').focus();
+            areaInput.focus();
             return;
         }
         
         // Validate cart
-        const cartItems = Object.values(cart);
-        if (cartItems.length === 0) {
+        if (Object.keys(cart).length === 0) {
             showNotification('Please add items to cart', 'warning');
             window.location.href = 'index.html';
             return;
@@ -315,12 +421,12 @@ async function placeOrder() {
         // Collect order data
         const orderData = {
             customer: {
-                Name: customerName,
-                Phone: customerPhone,
-                City: city,
-                Area: area
+                Name: customerName.value.trim(),
+                Phone: customerPhone.value.trim(),
+                City: citySelect.value,
+                Area: areaInput.value.trim()
             },
-            items: cartItems.map(item => ({
+            items: Object.values(cart).map(item => ({
                 ProductID: item.id,
                 ProductName: item.name,
                 Quantity: item.quantity,
@@ -352,82 +458,40 @@ async function placeOrder() {
         submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
         submitBtn.disabled = true;
         
-        // Save order to backend
-        const result = await saveOrder(orderData);
+        // Simulate API call (replace with real API call)
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        
+        // Generate order ID
+        const orderId = 'ORD' + Math.random().toString(36).substr(2, 8).toUpperCase();
+        
+        // Show success message
+        showNotification(`Order placed successfully! Order ID: ${orderId}`, 'success');
+        
+        // Clear cart
+        localStorage.removeItem('kuswar_cart');
+        localStorage.removeItem('checkout_cart');
         
         // Reset button
         submitBtn.innerHTML = originalText;
         submitBtn.disabled = false;
         
-        if (result.success) {
-            showNotification(`Order placed successfully! Order ID: ${result.order_id}`, 'success');
-            
-            // Clear cart
-            localStorage.removeItem('kuswar_cart');
-            localStorage.removeItem('checkout_cart');
-            
-            // Reset form
-            document.getElementById('customerForm').reset();
-            
-            // Redirect to orders page after 3 seconds
-            setTimeout(() => {
-                window.location.href = 'orders.html';
-            }, 3000);
-            
-        } else {
-            showNotification(`Failed to place order: ${result.error}`, 'danger');
-        }
+        // Redirect to orders page
+        setTimeout(() => {
+            window.location.href = 'orders.html';
+        }, 2000);
         
     } catch (error) {
         console.error('Error placing order:', error);
         showNotification(`Error: ${error.message}`, 'danger');
+        
+        // Reset button
+        const submitBtn = document.querySelector('button[onclick="placeOrder()"]');
+        if (submitBtn) {
+            submitBtn.innerHTML = '<i class="fas fa-check-circle"></i> Place Order';
+            submitBtn.disabled = false;
+        }
     }
 }
-
-// Save order to backend
-async function saveOrder(orderData) {
-    try {
-        // For demo, simulate API call
-        console.log('Saving order:', orderData);
-        
-        // Simulate API delay
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        // Generate random order ID
-        const orderId = 'ORD' + Math.random().toString(36).substr(2, 9).toUpperCase();
-        
-        return {
-            success: true,
-            order_id: orderId,
-            message: 'Order saved successfully'
-        };
-        
-        /* 
-        // Uncomment this for real API call
-        const response = await fetch(`${CONFIG.API_BASE_URL}/api/orders`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(orderData)
-        });
-        
-        return await response.json();
-        */
-        
-    } catch (error) {
-        console.error('Error saving order:', error);
-        return {
-            success: false,
-            error: error.message
-        };
-    }
-}
-
-// Initialize when page loads
-document.addEventListener('DOMContentLoaded', function() {
-    initCheckoutPage();
-});
 
 // Make functions available globally
 window.updateCartItemQuantity = updateCartItemQuantity;
