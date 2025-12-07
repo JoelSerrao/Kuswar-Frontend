@@ -4,12 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Kuswar - Recent Orders</title>
-    <!-- Bootstrap 5 -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Custom CSS -->
-    <link rel="stylesheet" href="css/style.css">
+    <style>
+        body { padding-top: 76px; background-color: #f5f7fb; }
+        .order-row:hover { background-color: rgba(67, 97, 238, 0.05); cursor: pointer; }
+    </style>
 </head>
 <body>
     <!-- Navigation -->
@@ -19,12 +19,10 @@
                 <i class="fas fa-gift"></i> Kuswar Gifts
             </a>
             
-            <!-- Hamburger Menu -->
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
             
-            <!-- Navigation Links -->
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto">
                     <li class="nav-item">
@@ -64,15 +62,6 @@
             </div>
         </div>
         
-        <!-- Orders Summary -->
-        <div class="row mb-4">
-            <div class="col-12">
-                <div id="ordersSummary">
-                    <!-- Summary cards will be loaded here -->
-                </div>
-            </div>
-        </div>
-        
         <!-- Filters -->
         <div class="row mb-4">
             <div class="col-12">
@@ -86,20 +75,18 @@
                             <div class="col-md-3">
                                 <select class="form-control" id="statusFilter">
                                     <option value="">All Status</option>
+                                    <option value="Paid">Paid</option>
+                                    <option value="Unpaid">Unpaid</option>
+                                    <option value="Cash on Delivery">Cash on Delivery</option>
                                 </select>
                             </div>
                             <div class="col-md-3">
                                 <input type="date" class="form-control" id="dateFilter">
                             </div>
                             <div class="col-md-2">
-                                <div class="btn-group w-100">
-                                    <button class="btn btn-primary" id="refreshOrders">
-                                        <i class="fas fa-sync-alt"></i>
-                                    </button>
-                                    <button class="btn btn-success" id="exportOrders">
-                                        <i class="fas fa-file-export"></i>
-                                    </button>
-                                </div>
+                                <button class="btn btn-primary w-100" onclick="loadOrders()">
+                                    <i class="fas fa-filter"></i> Filter
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -122,14 +109,12 @@
                                         <th>Items</th>
                                         <th class="text-end">Amount</th>
                                         <th>Status</th>
-                                        <th>Delivery</th>
                                         <th class="text-center">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody id="ordersTable">
-                                    <!-- Orders will be loaded here -->
                                     <tr>
-                                        <td colspan="8" class="text-center py-5">
+                                        <td colspan="7" class="text-center py-5">
                                             <div class="spinner-border text-primary" role="status">
                                                 <span class="visually-hidden">Loading...</span>
                                             </div>
@@ -145,12 +130,143 @@
         </div>
     </div>
 
-    <!-- Toast Container -->
-    <div class="toast-container position-fixed bottom-0 end-0 p-3"></div>
-
-    <!-- Bootstrap & Custom JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="js/app.js"></script>
-    <script src="js/orders.js"></script>
+    <script>
+        // Sample orders data
+        const sampleOrders = [
+            {
+                OrderID: 'ORD001',
+                OrderDate: '2024-01-15',
+                Ordertime: '14:30:00',
+                CustomerName: 'John Doe',
+                Phone: '9876543210',
+                CustomerCity: 'Mumbai',
+                CustomerArea: 'Andheri',
+                items: [
+                    { ProductName: 'Family Pack', Quantity: 1 },
+                    { ProductName: 'Chocolate Box', Quantity: 2 }
+                ],
+                TotalAmount: 3197,
+                PaymentStatus: 'Paid'
+            },
+            {
+                OrderID: 'ORD002',
+                OrderDate: '2024-01-14',
+                Ordertime: '11:15:00',
+                CustomerName: 'Jane Smith',
+                Phone: '9876543211',
+                CustomerCity: 'Delhi',
+                CustomerArea: 'Connaught Place',
+                items: [
+                    { ProductName: 'Festival Hamper', Quantity: 1 }
+                ],
+                TotalAmount: 1499,
+                PaymentStatus: 'Unpaid'
+            }
+        ];
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            renderOrdersTable(sampleOrders);
+        });
+
+        // Render orders table
+        function renderOrdersTable(orders) {
+            const ordersTable = document.getElementById('ordersTable');
+            
+            if (!orders || orders.length === 0) {
+                ordersTable.innerHTML = `
+                    <tr>
+                        <td colspan="7" class="text-center py-5">
+                            <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                            <h5 class="text-muted">No orders found</h5>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            let tableHTML = '';
+            
+            orders.forEach(order => {
+                const orderDate = new Date(order.OrderDate);
+                const formattedDate = orderDate.toLocaleDateString('en-IN', {
+                    day: '2-digit',
+                    month: 'short',
+                    year: 'numeric'
+                });
+                
+                const itemsList = order.items ? order.items.map(item => 
+                    `<div class="small">${item.ProductName} × ${item.Quantity}</div>`
+                ).join('') : '';
+                
+                const statusClass = order.PaymentStatus === 'Paid' ? 'bg-success' : 
+                                  order.PaymentStatus === 'Unpaid' ? 'bg-warning text-dark' : 'bg-info';
+                
+                tableHTML += `
+                    <tr class="order-row">
+                        <td>
+                            <span class="badge bg-primary">#${order.OrderID}</span>
+                        </td>
+                        <td>
+                            <div>${formattedDate}</div>
+                            <small class="text-muted">${order.Ordertime}</small>
+                        </td>
+                        <td>
+                            <strong>${order.CustomerName}</strong>
+                            <div class="small text-muted">${order.Phone}</div>
+                            <div class="small">${order.CustomerCity} - ${order.CustomerArea}</div>
+                        </td>
+                        <td>${itemsList}</td>
+                        <td class="text-end">
+                            <strong class="text-success">₹${order.TotalAmount.toFixed(2)}</strong>
+                        </td>
+                        <td>
+                            <span class="badge ${statusClass}">
+                                ${order.PaymentStatus}
+                            </span>
+                        </td>
+                        <td class="text-center">
+                            <button class="btn btn-sm btn-outline-primary" 
+                                    onclick="viewOrderDetails('${order.OrderID}')">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            });
+            
+            ordersTable.innerHTML = tableHTML;
+        }
+
+        // Filter orders
+        function loadOrders() {
+            const searchTerm = document.getElementById('searchOrders').value.toLowerCase();
+            const statusFilter = document.getElementById('statusFilter').value;
+            
+            const filtered = sampleOrders.filter(order => {
+                const matchesSearch = 
+                    order.OrderID.toLowerCase().includes(searchTerm) ||
+                    order.CustomerName.toLowerCase().includes(searchTerm) ||
+                    order.Phone.includes(searchTerm);
+                
+                const matchesStatus = !statusFilter || order.PaymentStatus === statusFilter;
+                
+                return matchesSearch && matchesStatus;
+            });
+            
+            renderOrdersTable(filtered);
+        }
+
+        // View order details
+        function viewOrderDetails(orderId) {
+            alert(`Viewing order ${orderId} - Details would open here`);
+        }
+
+        // Initialize filters
+        document.getElementById('searchOrders').addEventListener('input', loadOrders);
+        document.getElementById('statusFilter').addEventListener('change', loadOrders);
+        document.getElementById('dateFilter').addEventListener('change', loadOrders);
+    </script>
 </body>
 </html>

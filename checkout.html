@@ -4,27 +4,25 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Kuswar - Checkout</title>
-    <!-- Bootstrap 5 -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Custom CSS -->
-    <link rel="stylesheet" href="css/style.css">
+    <style>
+        body { padding-top: 76px; background-color: #f5f7fb; }
+        .cart-item { border-bottom: 1px solid #eee; padding-bottom: 15px; margin-bottom: 15px; }
+    </style>
 </head>
 <body>
-    <!-- Navigation (same as homepage) -->
+    <!-- Navigation -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm fixed-top">
         <div class="container">
             <a class="navbar-brand" href="index.html">
                 <i class="fas fa-gift"></i> Traditionalzz Kuswar
             </a>
             
-            <!-- Hamburger Menu -->
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
             
-            <!-- Navigation Links -->
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto">
                     <li class="nav-item">
@@ -55,7 +53,7 @@
     <!-- Main Content -->
     <div class="container mt-5 pt-4">
         <div class="row">
-            <!-- Left Column: Customer Details -->
+            <!-- Customer Details -->
             <div class="col-lg-6 mb-4">
                 <div class="card shadow">
                     <div class="card-header bg-primary text-white">
@@ -81,13 +79,17 @@
                                     <label class="form-label">City *</label>
                                     <select class="form-control" id="citySelect" required>
                                         <option value="">Select City</option>
+                                        <option value="Mumbai">Mumbai</option>
+                                        <option value="Delhi">Delhi</option>
+                                        <option value="Bangalore">Bangalore</option>
+                                        <option value="Hyderabad">Hyderabad</option>
+                                        <option value="Chennai">Chennai</option>
+                                        <option value="Kolkata">Kolkata</option>
                                     </select>
                                 </div>
                                 <div class="col-md-6">
                                     <label class="form-label">Area *</label>
-                                    <input type="text" class="form-control" id="areaInput" 
-                                           list="areaSuggestions" required>
-                                    <datalist id="areaSuggestions"></datalist>
+                                    <input type="text" class="form-control" id="areaInput" required>
                                 </div>
                             </div>
                             
@@ -121,7 +123,7 @@
                 </div>
             </div>
             
-            <!-- Right Column: Order Summary -->
+            <!-- Order Summary -->
             <div class="col-lg-6">
                 <div class="card shadow">
                     <div class="card-header bg-dark text-white">
@@ -161,9 +163,354 @@
     <!-- Toast Container -->
     <div class="toast-container position-fixed bottom-0 end-0 p-3"></div>
 
-    <!-- Bootstrap & Custom JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="js/app.js"></script>
-    <script src="js/checkout.js"></script>
+    <script>
+        // Configuration
+        const CONFIG = {
+            API_BASE_URL: "https://kuswar-backend.onrender.com"
+        };
+
+        let cart = {};
+        let paymentRecipients = ['John Doe', 'Jane Smith', 'Robert Johnson'];
+
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            initCheckoutPage();
+        });
+
+        function initCheckoutPage() {
+            try {
+                // Load cart from localStorage
+                const savedCart = localStorage.getItem('checkout_cart') || localStorage.getItem('kuswar_cart');
+                if (savedCart) {
+                    cart = JSON.parse(savedCart);
+                }
+                
+                // If cart is empty, add sample items
+                if (Object.keys(cart).length === 0) {
+                    cart = {
+                        'sample1': {
+                            id: 'sample1',
+                            name: 'Family Pack',
+                            price: 1999,
+                            category: 'Hamper',
+                            quantity: 1
+                        },
+                        'sample2': {
+                            id: 'sample2', 
+                            name: 'Chocolate Box',
+                            price: 599,
+                            category: 'Box',
+                            quantity: 2
+                        }
+                    };
+                }
+                
+                // Load UI
+                loadOrderSummary();
+                calculateOrderTotal();
+                setDeliveryDateMin();
+                setupEventListeners();
+                
+            } catch (error) {
+                console.error('Error:', error);
+                showNotification('Error loading checkout', 'danger');
+            }
+        }
+
+        // Load order summary
+        function loadOrderSummary() {
+            const orderSummary = document.getElementById('orderSummary');
+            if (!orderSummary) return;
+            
+            const cartItems = Object.values(cart);
+            
+            if (cartItems.length === 0) {
+                orderSummary.innerHTML = `
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i> No items in cart.
+                        <a href="index.html" class="alert-link">Browse products</a>
+                    </div>
+                `;
+                return;
+            }
+            
+            let itemsHTML = '';
+            let subtotal = 0;
+            
+            cartItems.forEach((item, index) => {
+                const itemTotal = item.price * item.quantity;
+                subtotal += itemTotal;
+                
+                itemsHTML += `
+                    <div class="cart-item mb-3 pb-3 ${index < cartItems.length - 1 ? 'border-bottom' : ''}">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div class="flex-grow-1">
+                                <h6 class="mb-1">${item.name}</h6>
+                                <div class="small text-muted mb-2">
+                                    <span class="badge bg-light text-dark">${item.category}</span>
+                                </div>
+                                <div class="d-flex align-items-center">
+                                    <button class="btn btn-sm btn-outline-secondary me-2" 
+                                            onclick="updateCartItemQuantity('${item.id}', ${item.quantity - 1})">
+                                        <i class="fas fa-minus"></i>
+                                    </button>
+                                    <span class="mx-2 fw-bold">${item.quantity}</span>
+                                    <button class="btn btn-sm btn-outline-secondary me-3" 
+                                            onclick="updateCartItemQuantity('${item.id}', ${item.quantity + 1})">
+                                        <i class="fas fa-plus"></i>
+                                    </button>
+                                    <span class="text-muted">@ ₹${item.price} each</span>
+                                </div>
+                            </div>
+                            <div class="text-end">
+                                <h6 class="text-primary mb-1">₹${itemTotal.toFixed(2)}</h6>
+                                <button class="btn btn-sm btn-outline-danger" 
+                                        onclick="removeCartItem('${item.id}')">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            itemsHTML += `
+                <div class="mt-4 pt-3 border-top">
+                    <div class="d-flex justify-content-between">
+                        <span class="fw-bold">Items (${cartItems.length}):</span>
+                        <span class="fw-bold">₹${subtotal.toFixed(2)}</span>
+                    </div>
+                </div>
+            `;
+            
+            orderSummary.innerHTML = itemsHTML;
+            document.getElementById('subtotal').textContent = `₹${subtotal.toFixed(2)}`;
+        }
+
+        // Update cart item quantity
+        function updateCartItemQuantity(productId, newQuantity) {
+            if (!cart[productId]) return;
+            
+            if (newQuantity <= 0) {
+                delete cart[productId];
+            } else {
+                cart[productId].quantity = newQuantity;
+            }
+            
+            localStorage.setItem('checkout_cart', JSON.stringify(cart));
+            loadOrderSummary();
+            calculateOrderTotal();
+        }
+
+        // Remove cart item
+        function removeCartItem(productId) {
+            if (cart[productId]) {
+                delete cart[productId];
+                localStorage.setItem('checkout_cart', JSON.stringify(cart));
+                loadOrderSummary();
+                calculateOrderTotal();
+            }
+        }
+
+        // Calculate order total
+        function calculateOrderTotal() {
+            const cartItems = Object.values(cart);
+            const subtotal = cartItems.reduce((total, item) => {
+                return total + (item.price * item.quantity);
+            }, 0);
+            
+            document.getElementById('orderTotal').textContent = `₹${subtotal.toFixed(2)}`;
+        }
+
+        // Setup event listeners
+        function setupEventListeners() {
+            // Payment status change
+            const paymentStatus = document.getElementById('paymentStatus');
+            const paidToContainer = document.getElementById('paidToContainer');
+            
+            if (paymentStatus && paidToContainer) {
+                paymentStatus.addEventListener('change', function() {
+                    if (this.value === 'Paid') {
+                        paidToContainer.style.display = 'block';
+                        document.getElementById('paidTo').required = true;
+                    } else {
+                        paidToContainer.style.display = 'none';
+                        document.getElementById('paidTo').required = false;
+                        document.getElementById('paidTo').value = '';
+                    }
+                });
+                
+                // Trigger initial state
+                paymentStatus.dispatchEvent(new Event('change'));
+            }
+            
+            // Form submission
+            const orderForm = document.getElementById('customerForm');
+            if (orderForm) {
+                orderForm.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    placeOrder();
+                });
+            }
+        }
+
+        // Set delivery date
+        function setDeliveryDateMin() {
+            const deliveryDateInput = document.getElementById('deliveryDate');
+            if (deliveryDateInput) {
+                const today = new Date().toISOString().split('T')[0];
+                deliveryDateInput.min = today;
+                
+                const tomorrow = new Date();
+                tomorrow.setDate(tomorrow.getDate() + 1);
+                deliveryDateInput.value = tomorrow.toISOString().split('T')[0];
+            }
+        }
+
+        // Place order
+        async function placeOrder() {
+            try {
+                // Validate form
+                const customerName = document.getElementById('customerName').value.trim();
+                const customerPhone = document.getElementById('customerPhone').value.trim();
+                const city = document.getElementById('citySelect').value;
+                const area = document.getElementById('areaInput').value.trim();
+                
+                if (!customerName) {
+                    showNotification('Please enter customer name', 'warning');
+                    return;
+                }
+                
+                if (!customerPhone || customerPhone.length < 10) {
+                    showNotification('Please enter a valid phone number', 'warning');
+                    return;
+                }
+                
+                if (!city) {
+                    showNotification('Please select a city', 'warning');
+                    return;
+                }
+                
+                if (!area) {
+                    showNotification('Please enter area', 'warning');
+                    return;
+                }
+                
+                // Validate cart
+                if (Object.keys(cart).length === 0) {
+                    showNotification('Please add items to cart', 'warning');
+                    return;
+                }
+                
+                // Collect order data
+                const orderData = {
+                    customer: {
+                        Name: customerName,
+                        Phone: customerPhone,
+                        City: city,
+                        Area: area
+                    },
+                    items: Object.values(cart).map(item => ({
+                        ProductID: item.id,
+                        ProductName: item.name,
+                        Quantity: item.quantity,
+                        UnitPrice: item.price
+                    })),
+                    order_source: "Website",
+                    payment_status: document.getElementById('paymentStatus').value,
+                    notes: document.getElementById('orderNotes').value.trim(),
+                    delivery_date: document.getElementById('deliveryDate').value
+                };
+                
+                // Add paid to info
+                if (orderData.payment_status === 'Paid') {
+                    const paidTo = document.getElementById('paidTo').value.trim();
+                    if (paidTo) {
+                        orderData.paid_to = paidTo;
+                    } else {
+                        showNotification('Please enter who received the payment', 'warning');
+                        return;
+                    }
+                }
+                
+                console.log('Order data:', orderData);
+                
+                // Show loading
+                const submitBtn = document.querySelector('button[onclick="placeOrder()"]');
+                const originalText = submitBtn.innerHTML;
+                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+                submitBtn.disabled = true;
+                
+                // Simulate API call
+                await new Promise(resolve => setTimeout(resolve, 1500));
+                
+                // Generate order ID
+                const orderId = 'ORD' + Math.random().toString(36).substr(2, 8).toUpperCase();
+                
+                // Success
+                showNotification(`Order placed successfully! Order ID: ${orderId}`, 'success');
+                
+                // Clear cart
+                localStorage.removeItem('kuswar_cart');
+                localStorage.removeItem('checkout_cart');
+                
+                // Reset button
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
+                
+                // Redirect
+                setTimeout(() => {
+                    window.location.href = 'orders.html';
+                }, 2000);
+                
+            } catch (error) {
+                console.error('Error:', error);
+                showNotification(`Error: ${error.message}`, 'danger');
+                
+                // Reset button
+                const submitBtn = document.querySelector('button[onclick="placeOrder()"]');
+                if (submitBtn) {
+                    submitBtn.innerHTML = '<i class="fas fa-check-circle"></i> Place Order';
+                    submitBtn.disabled = false;
+                }
+            }
+        }
+
+        // Show notification
+        function showNotification(message, type = 'info') {
+            const toastContainer = document.querySelector('.toast-container');
+            const toastId = 'toast-' + Date.now();
+            const toast = document.createElement('div');
+            toast.className = `toast align-items-center text-white bg-${type} border-0`;
+            toast.id = toastId;
+            
+            toast.innerHTML = `
+                <div class="d-flex">
+                    <div class="toast-body">
+                        ${message}
+                    </div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+                </div>
+            `;
+            
+            toastContainer.appendChild(toast);
+            
+            const bsToast = new bootstrap.Toast(toast, {
+                autohide: true,
+                delay: 3000
+            });
+            bsToast.show();
+            
+            toast.addEventListener('hidden.bs.toast', function() {
+                toast.remove();
+            });
+        }
+
+        // Make functions available
+        window.updateCartItemQuantity = updateCartItemQuantity;
+        window.removeCartItem = removeCartItem;
+        window.placeOrder = placeOrder;
+    </script>
 </body>
 </html>

@@ -8,8 +8,54 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Custom CSS -->
-    <link rel="stylesheet" href="css/style.css">
+    <style>
+        :root {
+            --primary-color: #4361ee;
+            --secondary-color: #3a0ca3;
+        }
+        
+        body {
+            padding-top: 76px;
+            background-color: #f5f7fb;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        .product-card {
+            transition: transform 0.2s, box-shadow 0.2s;
+            border: 1px solid #e9ecef;
+        }
+        
+        .product-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+        }
+        
+        .quantity-control .input-group {
+            max-width: 150px;
+            margin: 0 auto;
+        }
+        
+        .cart-item {
+            transition: background-color 0.2s;
+        }
+        
+        .cart-item:hover {
+            background-color: rgba(0, 0, 0, 0.02);
+        }
+        
+        .stat-card {
+            border-left: 5px solid var(--primary-color);
+            transition: transform 0.3s ease;
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .toast-container {
+            z-index: 9999;
+        }
+    </style>
 </head>
 <body>
     <!-- Navigation -->
@@ -70,7 +116,7 @@
                 <h1 class="display-5 fw-bold text-primary">
                     <i class="fas fa-gifts"></i> Product Catalog
                 </h1>
-                <p class="lead">Browse and select hampers and items</p>
+                <p class="lead">Browse and select gifts, hampers and items</p>
             </div>
         </div>
         
@@ -135,7 +181,399 @@
 
     <!-- Bootstrap & Custom JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="js/app.js"></script>
-    <script src="js/homepage.js"></script>
+    <script>
+        // Configuration
+        const CONFIG = {
+            API_BASE_URL: "https://kuswar-backend.onrender.com"
+        };
+
+        // Global cart
+        let cart = {};
+
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            initHomepage();
+        });
+
+        async function initHomepage() {
+            try {
+                // Load cart from localStorage
+                const savedCart = localStorage.getItem('kuswar_cart');
+                if (savedCart) {
+                    cart = JSON.parse(savedCart);
+                    updateCartCount();
+                }
+                
+                // Load sample products (for demo)
+                loadSampleProducts();
+                
+                // Update UI
+                updateCheckoutButton();
+                loadCartItems();
+                
+            } catch (error) {
+                console.error('Error:', error);
+                showNotification('Error loading page', 'danger');
+            }
+        }
+
+        // Load sample products
+        function loadSampleProducts() {
+            const sampleProducts = {
+                'Hamper': [
+                    { ProductID: '1', ProductName: 'Family Pack', UniPrice: 1999, Stock: 10, Description: 'Premium hamper for family' },
+                    { ProductID: '2', ProductName: 'Festival Hamper', UniPrice: 1499, Stock: 5, Description: 'Festival special hamper' },
+                    { ProductID: '3', ProductName: 'Corporate Hamper', UniPrice: 2999, Stock: 8, Description: 'Corporate gifting hamper' }
+                ],
+                'Box': [
+                    { ProductID: '4', ProductName: 'Chocolate Box', UniPrice: 599, Stock: 20, Description: 'Assorted chocolates' },
+                    { ProductID: '5', ProductName: 'Dry Fruit Box', UniPrice: 899, Stock: 15, Description: 'Premium dry fruits' },
+                    { ProductID: '6', ProductName: 'Sweets Box', UniPrice: 499, Stock: 25, Description: 'Traditional sweets' }
+                ],
+                'Goodies': [
+                    { ProductID: '7', ProductName: 'Cookies Pack', UniPrice: 299, Stock: 30, Description: 'Homemade cookies' },
+                    { ProductID: '8', ProductName: 'Biscuit Tin', UniPrice: 399, Stock: 18, Description: 'Assorted biscuits' },
+                    { ProductID: '9', ProductName: 'Snack Pack', UniPrice: 249, Stock: 22, Description: 'Mixed snacks' }
+                ]
+            };
+            
+            renderCategories(sampleProducts);
+        }
+
+        // Render categories
+        function renderCategories(groupedProducts) {
+            const accordion = document.getElementById('categoriesAccordion');
+            accordion.innerHTML = '';
+            
+            const categories = Object.keys(groupedProducts).sort();
+            
+            categories.forEach((category, index) => {
+                const products = groupedProducts[category];
+                const accordionId = `category-${index}`;
+                const isFirst = index === 0;
+                
+                const accordionItem = document.createElement('div');
+                accordionItem.className = 'accordion-item shadow-sm mb-3';
+                
+                accordionItem.innerHTML = `
+                    <h2 class="accordion-header" id="heading-${accordionId}">
+                        <button class="accordion-button ${isFirst ? '' : 'collapsed'}" 
+                                type="button" 
+                                data-bs-toggle="collapse" 
+                                data-bs-target="#collapse-${accordionId}"
+                                aria-expanded="${isFirst ? 'true' : 'false'}"
+                                aria-controls="collapse-${accordionId}">
+                            <i class="fas fa-folder me-2"></i>
+                            <strong>${category}</strong>
+                            <span class="badge bg-primary rounded-pill ms-2">${products.length}</span>
+                        </button>
+                    </h2>
+                    <div id="collapse-${accordionId}" 
+                         class="accordion-collapse collapse ${isFirst ? 'show' : ''}"
+                         aria-labelledby="heading-${accordionId}"
+                         data-bs-parent="#categoriesAccordion">
+                        <div class="accordion-body p-3">
+                            <div class="row g-3" id="products-${accordionId}">
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                accordion.appendChild(accordionItem);
+                renderProducts(`products-${accordionId}`, products, category);
+            });
+        }
+
+        // Render products
+        function renderProducts(containerId, products, category) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = '';
+            
+            products.forEach(product => {
+                const productId = product.ProductID;
+                const cartQuantity = cart[productId] ? cart[productId].quantity : 0;
+                
+                const productCard = document.createElement('div');
+                productCard.className = 'col-md-6 col-lg-4';
+                
+                productCard.innerHTML = `
+                    <div class="card product-card h-100 shadow-sm">
+                        <div class="card-body">
+                            <h5 class="card-title">${product.ProductName}</h5>
+                            <p class="card-text text-muted small mb-2">
+                                ${product.Description || 'No description available'}
+                            </p>
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h4 class="text-primary mb-0">₹${product.UniPrice}</h4>
+                                <span class="badge ${product.Stock > 0 ? 'bg-success' : 'bg-danger'}">
+                                    ${product.Stock > 0 ? `Stock: ${product.Stock}` : 'Out of Stock'}
+                                </span>
+                            </div>
+                            
+                            <div class="quantity-control">
+                                <div class="input-group">
+                                    <button class="btn btn-outline-primary" type="button" 
+                                            onclick="removeFromCart('${productId}')"
+                                            ${cartQuantity === 0 ? 'disabled' : ''}>
+                                        <i class="fas fa-minus"></i>
+                                    </button>
+                                    
+                                    <input type="number" 
+                                           class="form-control text-center quantity-input" 
+                                           data-product-id="${productId}"
+                                           value="${cartQuantity}"
+                                           min="0"
+                                           max="${product.Stock}"
+                                           onchange="updateProductQuantity('${productId}', this.value)">
+                                    
+                                    <button class="btn btn-outline-primary" type="button" 
+                                            onclick="addToCart('${productId}', '${product.ProductName.replace(/'/g, "\\'")}', ${product.UniPrice}, '${category.replace(/'/g, "\\'")}')"
+                                            ${product.Stock === 0 ? 'disabled' : ''}>
+                                        <i class="fas fa-plus"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                container.appendChild(productCard);
+            });
+        }
+
+        // Add to cart
+        function addToCart(productId, productName, price, category) {
+            if (!cart[productId]) {
+                cart[productId] = {
+                    id: productId,
+                    name: productName,
+                    price: price,
+                    category: category,
+                    quantity: 1
+                };
+            } else {
+                cart[productId].quantity += 1;
+            }
+            
+            saveCart();
+            updateProductDisplay(productId);
+            showNotification(`${productName} added to cart`, 'success');
+        }
+
+        // Remove from cart
+        function removeFromCart(productId) {
+            const item = cart[productId];
+            if (item) {
+                if (item.quantity > 1) {
+                    item.quantity -= 1;
+                } else {
+                    delete cart[productId];
+                }
+                saveCart();
+                updateProductDisplay(productId);
+                showNotification(`${item.name} removed from cart`, 'info');
+            }
+        }
+
+        // Update product quantity
+        function updateProductQuantity(productId, quantity) {
+            const qty = parseInt(quantity);
+            if (isNaN(qty) || qty < 0) {
+                if (cart[productId]) {
+                    delete cart[productId];
+                }
+            } else if (qty === 0) {
+                if (cart[productId]) {
+                    delete cart[productId];
+                }
+            } else {
+                if (!cart[productId]) {
+                    // Find product info
+                    const input = document.querySelector(`input[data-product-id="${productId}"]`);
+                    if (input) {
+                        const card = input.closest('.product-card');
+                        const name = card.querySelector('.card-title').textContent;
+                        const price = parseFloat(card.querySelector('.text-primary').textContent.replace('₹', ''));
+                        const category = card.closest('.accordion-item').querySelector('.accordion-button strong').textContent;
+                        
+                        cart[productId] = {
+                            id: productId,
+                            name: name,
+                            price: price,
+                            category: category,
+                            quantity: qty
+                        };
+                    }
+                } else {
+                    cart[productId].quantity = qty;
+                }
+            }
+            
+            saveCart();
+            updateProductDisplay(productId);
+        }
+
+        // Update product display
+        function updateProductDisplay(productId) {
+            const input = document.querySelector(`input[data-product-id="${productId}"]`);
+            if (input) {
+                input.value = cart[productId] ? cart[productId].quantity : 0;
+            }
+            updateCartCount();
+            loadCartItems();
+            updateCheckoutButton();
+        }
+
+        // Save cart
+        function saveCart() {
+            localStorage.setItem('kuswar_cart', JSON.stringify(cart));
+            updateCartCount();
+        }
+
+        // Update cart count
+        function updateCartCount() {
+            const cartCount = document.getElementById('cartCount');
+            if (cartCount) {
+                const totalItems = Object.values(cart).reduce((sum, item) => sum + item.quantity, 0);
+                cartCount.textContent = totalItems;
+                cartCount.style.display = totalItems > 0 ? 'inline-block' : 'none';
+            }
+        }
+
+        // Load cart items
+        function loadCartItems() {
+            const cartItemsContainer = document.getElementById('cartItems');
+            const cartTotalElement = document.getElementById('cartTotal');
+            
+            if (!cartItemsContainer || !cartTotalElement) return;
+            
+            const cartItems = Object.values(cart);
+            
+            if (cartItems.length === 0) {
+                cartItemsContainer.innerHTML = `
+                    <p class="text-muted text-center py-3">
+                        <i class="fas fa-shopping-cart fa-2x mb-3"></i><br>
+                        Your cart is empty
+                    </p>
+                `;
+                cartTotalElement.textContent = '₹0.00';
+                return;
+            }
+            
+            let total = 0;
+            let itemsHTML = '';
+            
+            cartItems.forEach(item => {
+                const itemTotal = item.price * item.quantity;
+                total += itemTotal;
+                
+                itemsHTML += `
+                    <div class="cart-item mb-3 pb-3 border-bottom">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <h6 class="mb-1">${item.name}</h6>
+                                <small class="text-muted">${item.category}</small>
+                                <div class="mt-2">
+                                    <small class="text-muted">₹${item.price} × ${item.quantity}</small>
+                                </div>
+                            </div>
+                            <div class="text-end">
+                                <h6 class="text-primary mb-1">₹${itemTotal.toFixed(2)}</h6>
+                                <div class="btn-group btn-group-sm">
+                                    <button class="btn btn-outline-secondary" 
+                                            onclick="updateProductQuantity('${item.id}', ${item.quantity - 1})">
+                                        <i class="fas fa-minus"></i>
+                                    </button>
+                                    <button class="btn btn-outline-secondary" disabled>
+                                        ${item.quantity}
+                                    </button>
+                                    <button class="btn btn-outline-secondary" 
+                                            onclick="updateProductQuantity('${item.id}', ${item.quantity + 1})">
+                                        <i class="fas fa-plus"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            cartItemsContainer.innerHTML = itemsHTML;
+            cartTotalElement.textContent = `₹${total.toFixed(2)}`;
+        }
+
+        // Update checkout button
+        function updateCheckoutButton() {
+            const checkoutBtn = document.getElementById('checkoutBtn');
+            const cartTotalBadge = document.getElementById('cartTotalBadge');
+            
+            if (!checkoutBtn || !cartTotalBadge) return;
+            
+            const total = Object.values(cart).reduce((sum, item) => sum + (item.price * item.quantity), 0);
+            const hasItems = Object.keys(cart).length > 0;
+            
+            checkoutBtn.disabled = !hasItems;
+            cartTotalBadge.textContent = `₹${total.toFixed(2)}`;
+            
+            if (hasItems) {
+                checkoutBtn.classList.remove('btn-secondary');
+                checkoutBtn.classList.add('btn-primary');
+            } else {
+                checkoutBtn.classList.remove('btn-primary');
+                checkoutBtn.classList.add('btn-secondary');
+            }
+        }
+
+        // Proceed to checkout
+        function proceedToCheckout() {
+            if (Object.keys(cart).length === 0) {
+                showNotification('Please add items to cart before checkout', 'warning');
+                return;
+            }
+            
+            localStorage.setItem('checkout_cart', JSON.stringify(cart));
+            window.location.href = 'checkout.html';
+        }
+
+        // Clear cart
+        function clearCart() {
+            cart = {};
+            saveCart();
+            updateCartCount();
+            loadCartItems();
+            updateCheckoutButton();
+            showNotification('Cart cleared', 'info');
+        }
+
+        // Show notification
+        function showNotification(message, type = 'info') {
+            const toastContainer = document.querySelector('.toast-container');
+            const toastId = 'toast-' + Date.now();
+            const toast = document.createElement('div');
+            toast.className = `toast align-items-center text-white bg-${type} border-0`;
+            toast.id = toastId;
+            
+            toast.innerHTML = `
+                <div class="d-flex">
+                    <div class="toast-body">
+                        ${message}
+                    </div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+                </div>
+            `;
+            
+            toastContainer.appendChild(toast);
+            
+            const bsToast = new bootstrap.Toast(toast, {
+                autohide: true,
+                delay: 3000
+            });
+            bsToast.show();
+            
+            toast.addEventListener('hidden.bs.toast', function() {
+                toast.remove();
+            });
+        }
+    </script>
 </body>
 </html>
