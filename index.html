@@ -278,7 +278,7 @@
                             grouped[category].push({
                                 ProductID: product.ProductID,
                                 ProductName: product.ProductName,
-                                UniPrice: product.UniPrice || 0,
+                                UnitPrice: product.UnitPrice || 0,
                                 Stock: product.Stock || 0,
                                 Description: product.Description || ''
                             });
@@ -352,7 +352,7 @@
             products.forEach(product => {
                 const productId = product.ProductID;
                 const productName = product.ProductName;
-                const price = product.UniPrice || 0;
+                const price = product.UnitPrice || 0;
                 const stock = product.Stock || 0;
                 
                 const cartQuantity = cart[productId] ? cart[productId].quantity : 0;
