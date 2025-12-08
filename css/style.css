@@ -542,3 +542,32 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     max-height: calc(100vh - 200px);
     overflow-y: auto;
 }
+
+/* Custom Order Styling */
+.custom-order-card {
+    border-left: 4px solid #ffc107 !important;
+    background-color: #fffcf5;
+}
+
+.custom-order-card .badge-warning {
+    background-color: #ffc107;
+    color: #000;
+}
+
+.custom-order-card .btn-outline-warning:hover {
+    background-color: #ffc107;
+    color: #000;
+}
+
+/* Price TBD styling */
+.price-tbd {
+    font-style: italic;
+    color: #dc3545;
+    font-size: 0.9em;
+}
+
+/* Custom order form styling */
+#customOrderForm .form-control:focus {
+    border-color: #ffc107;
+    box-shadow: 0 0 0 0.25rem rgba(255, 193, 7, 0.25);
+}

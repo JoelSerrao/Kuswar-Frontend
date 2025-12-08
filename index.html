@@ -134,6 +134,47 @@
                 </div>
             </div>
         </div>
+
+        <!-- Custom Order Section -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card border-primary shadow-sm">
+                    <div class="card-body">
+                        <h5 class="card-title text-primary">
+                            <i class="fas fa-plus-circle me-2"></i>Custom Orders
+                        </h5>
+                        <p class="text-muted mb-3">Add custom items with notes and optional pricing</p>
+                        
+                        <!-- Custom Order Form -->
+                        <div id="customOrderForm" class="mb-3">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label for="customNotes" class="form-label">Notes / Description</label>
+                                    <textarea class="form-control" id="customNotes" rows="2" 
+                                              placeholder="E.g., Special decoration, personalized gift, custom arrangement"></textarea>
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="customPrice" class="form-label">Price (₹) <span class="text-muted">(Optional)</span></label>
+                                    <input type="number" class="form-control" id="customPrice" 
+                                           min="0" step="0.01" placeholder="Leave empty if unknown">
+                                    <div class="form-text">Enter 0 or leave empty if price is not known yet</div>
+                                </div>
+                                <div class="col-md-2 d-flex align-items-end">
+                                    <button class="btn btn-primary w-100" onclick="addCustomOrder()">
+                                        <i class="fas fa-plus me-1"></i> Add
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Custom Orders List -->
+                        <div id="customOrdersList" class="mt-3">
+                            <!-- Custom orders will be displayed here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
         
         <!-- Checkout Button -->
         <div class="row mt-4">
@@ -179,6 +220,38 @@
     <!-- Toast Container -->
     <div class="toast-container position-fixed bottom-0 end-0 p-3"></div>
 
+    <!-- Custom Order Edit Modal -->
+    <div class="modal fade" id="customOrderEditModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title">
+                        <i class="fas fa-edit me-2"></i>Edit Custom Order
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="editCustomOrderForm">
+                        <input type="hidden" id="editCustomId">
+                        <div class="mb-3">
+                            <label for="editCustomNotes" class="form-label">Notes / Description</label>
+                            <textarea class="form-control" id="editCustomNotes" rows="3" required></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label for="editCustomPrice" class="form-label">Price (₹)</label>
+                            <input type="number" class="form-control" id="editCustomPrice" 
+                                   min="0" step="0.01" required>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="saveCustomOrderEdit()">Save Changes</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Bootstrap & Custom JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
@@ -189,6 +262,9 @@
 
         // Global cart
         let cart = {};
+
+        // Custom Orders Functions
+        let customOrders = {};
 
         // Initialize when page loads
         document.addEventListener('DOMContentLoaded', function() {
@@ -203,9 +279,12 @@
                     cart = JSON.parse(savedCart);
                     updateCartCount();
                 }
-                
+
+                // Load custom orders
+                initCustomOrders();
+
                 loadRealProducts();
-                
+
                 // Update UI immediately
                 updateCheckoutButton();
                 loadCartItems();
@@ -235,6 +314,15 @@
             } catch (error) {
                 console.error('Error:', error);
                 showNotification('Error loading page', 'danger');
+            }
+        }
+
+        // Initialize custom orders from localStorage
+        function initCustomOrders() {
+            const savedCustomOrders = localStorage.getItem('kuswar_custom_orders');
+            if (savedCustomOrders) {
+                customOrders = JSON.parse(savedCustomOrders);
+                renderCustomOrders();
             }
         }
 
@@ -537,6 +625,187 @@
             saveCart();
             updateProductDisplay(productId);
         }
+
+        // Add custom order to cart
+        function addCustomOrder() {
+            const notes = document.getElementById('customNotes').value.trim();
+            const priceInput = document.getElementById('customPrice').value.trim();
+
+            if (!notes) {
+                showNotification('Please enter notes/description for the custom order', 'warning');
+                return;
+            }
+
+            // Parse price (allow empty for unknown price)
+            const price = priceInput === '' ? 0 : parseFloat(priceInput);
+
+            if (isNaN(price) || price < 0) {
+                showNotification('Please enter a valid price (or leave empty for unknown)', 'warning');
+                return;
+            }
+
+            const customId = 'CUSTOM_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+            const customItem = {
+                id: customId,
+                name: 'Custom Order: ' + (notes.length > 50 ? notes.substring(0, 50) + '...' : notes),
+                fullNotes: notes,
+                price: price,
+                quantity: 1,
+                category: 'Custom Orders',
+                isCustom: true,
+                priceKnown: price > 0
+            };
+
+            // Add to custom orders object
+            customOrders[customId] = customItem;
+
+            // Also add to main cart for checkout
+            cart[customId] = customItem;
+
+            // Save both
+            saveCustomOrders();
+            saveCart();
+
+            // Clear form
+            document.getElementById('customNotes').value = '';
+            document.getElementById('customPrice').value = '';
+
+            // Update UI
+            renderCustomOrders();
+            updateCartCount();
+            loadCartItems();
+            updateCheckoutButton();
+
+            showNotification('Custom order added to cart', 'success');
+        }
+
+                // Render custom orders list
+        function renderCustomOrders() {
+            const container = document.getElementById('customOrdersList');
+            const customOrdersArray = Object.values(customOrders);
+
+            if (customOrdersArray.length === 0) {
+                container.innerHTML = `
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        No custom orders added yet. Add one using the form above.
+                    </div>
+                `;
+                return;
+            }
+
+            let html = '<div class="list-group">';
+
+            customOrdersArray.forEach(order => {
+                html += `
+                    <div class="list-group-item list-group-item-action" id="custom-order-${order.id}">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div class="flex-grow-1 me-3">
+                                <div class="d-flex justify-content-between align-items-start mb-1">
+                                    <h6 class="mb-0">${order.name}</h6>
+                                    <span class="badge ${order.priceKnown ? 'bg-success' : 'bg-warning'}">
+                                        ${order.priceKnown ? `₹${order.price.toFixed(2)}` : 'Price TBD'}
+                                    </span>
+                                </div>
+                                <p class="text-muted mb-1 small">${order.fullNotes}</p>
+                                <div class="mt-2">
+                                    <button class="btn btn-sm btn-outline-primary me-1" onclick="editCustomOrder('${order.id}')">
+                                        <i class="fas fa-edit me-1"></i>Edit
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-danger" onclick="removeCustomOrder('${order.id}')">
+                                        <i class="fas fa-trash me-1"></i>Remove
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            html += '</div>';
+            container.innerHTML = html;
+        }
+        // Edit custom order
+        function editCustomOrder(orderId) {
+            const order = customOrders[orderId];
+            if (!order) return;
+
+            document.getElementById('editCustomId').value = orderId;
+            document.getElementById('editCustomNotes').value = order.fullNotes;
+            document.getElementById('editCustomPrice').value = order.price;
+
+            // Show modal
+            const modal = new bootstrap.Modal(document.getElementById('customOrderEditModal'));
+            modal.show();
+        }
+
+        // Save edited custom order
+        function saveCustomOrderEdit() {
+            const orderId = document.getElementById('editCustomId').value;
+            const notes = document.getElementById('editCustomNotes').value.trim();
+            const price = parseFloat(document.getElementById('editCustomPrice').value);
+
+            if (!orderId || !notes || isNaN(price) || price < 0) {
+                showNotification('Please fill all fields correctly', 'warning');
+                return;
+            }
+
+            const order = customOrders[orderId];
+            if (order) {
+                // Update custom order
+                order.name = 'Custom Order: ' + (notes.length > 50 ? notes.substring(0, 50) + '...' : notes);
+                order.fullNotes = notes;
+                order.price = price;
+                order.priceKnown = price > 0;
+
+                // Also update in main cart
+                cart[orderId] = order;
+
+                // Save changes
+                saveCustomOrders();
+                saveCart();
+
+                // Update UI
+                renderCustomOrders();
+                updateCartCount();
+                loadCartItems();
+                updateCheckoutButton();
+
+                // Close modal
+                const modal = bootstrap.Modal.getInstance(document.getElementById('customOrderEditModal'));
+                modal.hide();
+
+                showNotification('Custom order updated', 'success');
+            }
+        }
+
+        // Remove custom order
+        function removeCustomOrder(orderId) {
+            if (confirm('Are you sure you want to remove this custom order?')) {
+                // Remove from custom orders
+                delete customOrders[orderId];
+
+                // Remove from main cart
+                delete cart[orderId];
+
+                // Save changes
+                saveCustomOrders();
+                saveCart();
+
+                // Update UI
+                renderCustomOrders();
+                updateCartCount();
+                loadCartItems();
+                updateCheckoutButton();
+
+                showNotification('Custom order removed', 'info');
+            }
+        }
+
+        // Save custom orders to localStorage
+        function saveCustomOrders() {
+            localStorage.setItem('kuswar_custom_orders', JSON.stringify(customOrders));
+        }
         
 
         // Add to cart
@@ -695,7 +964,7 @@
             }
         }
 
-        // Load cart items with decimal support
+        // Load cart items with decimal support and custom orders
         function loadCartItems() {
             const cartItemsContainer = document.getElementById('cartItems');
             const cartTotalElement = document.getElementById('cartTotal');
@@ -719,38 +988,72 @@
             let itemsHTML = '';
             
             cartItems.forEach(item => {
-                const itemTotal = parseFloat((item.price*item.quantity).toFixed(2));
+                const isCustom = item.isCustom;
+                const itemTotal = parseFloat((item.price * item.quantity).toFixed(2));
                 total += itemTotal;
-                
-                itemsHTML += `
-                    <div class="cart-item mb-3 pb-3 border-bottom">
-                        <div class="d-flex justify-content-between align-items-start">
-                            <div>
-                                <h6 class="mb-1">${item.name}</h6>
-                                <small class="text-muted">${item.category}</small>
-                                <div class="mt-2">
-                                    <small class="text-muted">₹${item.price} × ${item.quantity}</small>
+
+                if (isCustom) {
+                    // Custom order item display
+                    itemsHTML += `
+                        <div class="cart-item mb-3 pb-3 border-bottom">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <h6 class="mb-1">
+                                        <span class="badge bg-warning me-2">Custom</span>
+                                        ${item.name}
+                                    </h6>
+                                    <small class="text-muted">${item.fullNotes}</small>
+                                    <div class="mt-2">
+                                        <small class="text-muted">₹${item.price.toFixed(2)} × ${item.quantity}</small>
+                                    </div>
                                 </div>
-                            </div>
-                            <div class="text-end">
-                                <h6 class="text-primary mb-1">₹${itemTotal.toFixed(2)}</h6>
-                                <div class="btn-group btn-group-sm">
-                                    <button class="btn btn-outline-secondary" 
-                                            onclick="decrementQuantity('${item.id}')">
-                                        <i class="fas fa-minus"></i>
-                                    </button>
-                                    <button class="btn btn-outline-secondary" disabled>
-                                        ${item.quantity % 1 === 0 ? item.quantity : item.quantity.toFixed(2)}
-                                    </button>
-                                    <button class="btn btn-outline-secondary" 
-                                            onclick="incrementQuantity('${item.id}')">
-                                        <i class="fas fa-plus"></i>
-                                    </button>
+                                <div class="text-end">
+                                    <h6 class="text-primary mb-1">₹${itemTotal.toFixed(2)}</h6>
+                                    <div class="btn-group btn-group-sm">
+                                        <button class="btn btn-outline-secondary" disabled>
+                                            ${item.quantity}
+                                        </button>
+                                        <button class="btn btn-outline-danger" 
+                                                onclick="removeCustomOrder('${item.id}')">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
-                `;
+                    `;
+                } else {
+                    // Regular item display
+                    itemsHTML += `
+                        <div class="cart-item mb-3 pb-3 border-bottom">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <h6 class="mb-1">${item.name}</h6>
+                                    <small class="text-muted">${item.category}</small>
+                                    <div class="mt-2">
+                                        <small class="text-muted">₹${item.price} × ${item.quantity}</small>
+                                    </div>
+                                </div>
+                                <div class="text-end">
+                                    <h6 class="text-primary mb-1">₹${itemTotal.toFixed(2)}</h6>
+                                    <div class="btn-group btn-group-sm">
+                                        <button class="btn btn-outline-secondary" 
+                                                onclick="decrementQuantity('${item.id}')">
+                                            <i class="fas fa-minus"></i>
+                                        </button>
+                                        <button class="btn btn-outline-secondary" disabled>
+                                            ${item.quantity % 1 === 0 ? item.quantity : item.quantity.toFixed(2)}
+                                        </button>
+                                        <button class="btn btn-outline-secondary" 
+                                                onclick="incrementQuantity('${item.id}')">
+                                            <i class="fas fa-plus"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
             });
             
             cartItemsContainer.innerHTML = itemsHTML;
@@ -767,6 +1070,8 @@
             const total = Object.values(cart).reduce((sum, item) => {
                 return parseFloat((sum + (item.price * item.quantity)).toFixed(2));
             }, 0);
+
+            // Enable checkout if there are ANY items (regular or custom)
             const hasItems = Object.keys(cart).length > 0;
             
             checkoutBtn.disabled = !hasItems;
@@ -787,19 +1092,41 @@
                 showNotification('Please add items to cart before checkout', 'warning');
                 return;
             }
-            
+
+            // Check if there are custom orders with unknown prices
+            const customOrdersWithUnknownPrice = Object.values(cart).filter(item => 
+                item.isCustom && item.price === 0
+            );
+
+            if (customOrdersWithUnknownPrice.length > 0) {
+                const shouldProceed = confirm(
+                    'You have custom orders with unknown prices (₹0). ' +
+                    'These will be recorded as ₹0. You can update prices later in the order details.\n\n' +
+                    'Do you want to proceed anyway?'
+                );
+
+                if (!shouldProceed) {
+                    return;
+                }
+            }
+
             localStorage.setItem('checkout_cart', JSON.stringify(cart));
             window.location.href = 'checkout.html';
         }
 
         // Clear cart
         function clearCart() {
-            cart = {};
-            saveCart();
-            updateCartCount();
-            loadCartItems();
-            updateCheckoutButton();
-            showNotification('Cart cleared', 'info');
+            if (confirm('Are you sure you want to clear the entire cart including custom orders?')) {
+                cart = {};
+                customOrders = {};
+                saveCart();
+                saveCustomOrders();
+                updateCartCount();
+                loadCartItems();
+                updateCheckoutButton();
+                renderCustomOrders();
+                showNotification('Cart cleared', 'info');
+            }
         }
 
         // Show notification
