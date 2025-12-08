@@ -342,7 +342,7 @@
             });
         }
 
-        // Render products
+        // Render products in a category - HORIZONTAL COMPACT LAYOUT
         function renderProducts(containerId, products, category) {
             const container = document.getElementById(containerId);
             if (!container) return;
@@ -358,50 +358,57 @@
                 const cartQuantity = cart[productId] ? cart[productId].quantity : 0;
                 
                 const productRow = document.createElement('div');
-                productRow.className = 'product-row-ultra d-flex justify-content-between align-items-center border-bottom py-2 px-2';
+                productRow.className = 'product-row-horizontal mb-2';
                 
                 productRow.innerHTML = `
-                    <!-- Product Name -->
-                    <div class="product-name-ultra" style="flex: 2; min-width: 150px;">
-                        <span class="fw-medium">${productName}</span>
-                    </div>
-                    
-                    <!-- Quantity Controls -->
-                    <div class="quantity-controls-ultra d-flex align-items-center" style="flex: 2;">
-                        <button class="btn btn-outline-primary btn-sm px-2 me-1" type="button" 
-                                onclick="removeFromCart('${productId}')"
-                                ${cartQuantity === 0 ? 'disabled' : ''}
-                                style="min-width: 32px;">
-                            <i class="fas fa-minus"></i>
-                        </button>
-                        
-                        <input type="number" 
-                               class="form-control form-control-sm text-center mx-1" 
-                               data-product-id="${productId}"
-                               value="${cartQuantity}"
-                               min="0"
-                               max="${stock}"
-                               onchange="updateProductQuantity('${productId}', this.value)"
-                               style="width: 50px;">
-                        
-                        <button class="btn btn-outline-primary btn-sm px-2 ms-1" type="button" 
-                                onclick="addToCart('${productId}', '${productName.replace(/'/g, "\\'")}', ${price}, '${category.replace(/'/g, "\\'")}')"
-                                ${stock === 0 ? 'disabled' : ''}
-                                style="min-width: 32px;">
-                            <i class="fas fa-plus"></i>
-                        </button>
-                    </div>
-                    
-                    <!-- Price -->
-                    <div class="text-center" style="flex: 1;">
-                        <span class="fw-bold text-primary">₹${price}</span>
-                    </div>
-                    
-                    <!-- Stock -->
-                    <div class="text-end" style="flex: 1;">
-                        <span class="badge ${stock > 0 ? 'bg-light text-dark border' : 'bg-danger'}">
-                            ${stock > 0 ? stock : 'Out'}
-                        </span>
+                    <div class="card border shadow-sm">
+                        <div class="card-body p-2">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <!-- Left: Product Name -->
+                                <div class="product-name" style="width: 30%; min-width: 150px;">
+                                    <span class="fw-medium">${productName}</span>
+                                </div>
+                                
+                                <!-- Middle: Quantity Controls -->
+                                <div class="quantity-controls d-flex align-items-center" style="width: 30%;">
+                                    <button class="btn btn-outline-primary btn-sm px-2 me-1" type="button" 
+                                            onclick="decrementQuantity('${productId}')"
+                                            ${cartQuantity <= 0 ? 'disabled' : ''}
+                                            style="min-width: 32px;">
+                                        <i class="fas fa-minus"></i>
+                                    </button>
+                                    
+                                    <input type="number" 
+                                           class="form-control form-control-sm text-center mx-1 quantity-input-horizontal" 
+                                           data-product-id="${productId}"
+                                           value="${cartQuantity}"
+                                           min="0"
+                                           step="0.01"
+                                           onchange="updateQuantityFromInput('${productId}', this.value)"
+                                           oninput="validateDecimalInput(this, ${stock})"
+                                           style="width: 70px;">
+                                    
+                                    <button class="btn btn-outline-primary btn-sm px-2 ms-1" type="button" 
+                                            onclick="incrementQuantity('${productId}')"
+                                            ${stock === 0 ? 'disabled' : ''}
+                                            style="min-width: 32px;">
+                                        <i class="fas fa-plus"></i>
+                                    </button>
+                                </div>
+                                
+                                <!-- Right: Price -->
+                                <div class="text-end" style="width: 20%;">
+                                    <span class="fw-bold text-primary">₹${price}</span>
+                                </div>
+                                
+                                <!-- Far Right: Stock -->
+                                <div class="text-end" style="width: 20%;">
+                                    <span class="badge ${stock > 0 ? 'bg-light text-dark border' : 'bg-danger'}">
+                                        ${stock > 0 ? `Stock: ${stock}` : 'Out of Stock'}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 `;
                 
@@ -409,37 +416,171 @@
             });
         }
 
+        // Decrement quantity by 1
+        function decrementQuantity(productId) {
+            const item = cart[productId];
+            if (item) {
+                // Decrease by 1, but keep as decimal if it was decimal
+                const newQuantity = parseFloat((item.quantity - 1).toFixed(2));
+                
+                if (newQuantity <= 0) {
+                    delete cart[productId];
+                    showNotification(`${item.name} removed from cart`, 'info');
+                } else {
+                    item.quantity = newQuantity;
+                    showNotification(`${item.name} quantity decreased to ${newQuantity}`, 'info');
+                }
+                
+                saveCart();
+                updateProductDisplay(productId);
+            }
+        }
+
+        // Update quantity from manual input (supports decimals)
+        function updateQuantityFromInput(productId, value) {
+            const quantity = parseFloat(value);
+            
+            if (isNaN(quantity) || quantity < 0) {
+                // Remove from cart if invalid
+                if (cart[productId]) {
+                    delete cart[productId];
+                    showNotification('Item removed from cart', 'info');
+                }
+            } else if (quantity === 0) {
+                // Remove from cart if zero
+                if (cart[productId]) {
+                    const itemName = cart[productId].name;
+                    delete cart[productId];
+                    showNotification(`${itemName} removed from cart`, 'info');
+                }
+            } else {
+                // Get product info if not in cart
+                if (!cart[productId]) {
+                    const input = document.querySelector(`input[data-product-id="${productId}"]`);
+                    if (input) {
+                        const card = input.closest('.card');
+                        const name = card.querySelector('.product-name span').textContent;
+                        const price = parseFloat(card.querySelector('.text-primary').textContent.replace('₹', ''));
+                        const category = card.closest('.accordion-item').querySelector('.accordion-button strong').textContent;
+                        
+                        cart[productId] = {
+                            id: productId,
+                            name: name,
+                            price: price,
+                            category: category,
+                            quantity: quantity
+                        };
+                        showNotification(`${name} added to cart (${quantity})`, 'success');
+                    }
+                } else {
+                    // Update existing cart item
+                    cart[productId].quantity = quantity;
+                    showNotification(`${cart[productId].name} quantity updated to ${quantity}`, 'success');
+                }
+            }
+            
+            saveCart();
+            updateProductDisplay(productId);
+        }
+
+        // Validate decimal input
+        function validateDecimalInput(input, maxStock) {
+            let value = input.value;
+            
+            // Allow empty input
+            if (value === '') return;
+            
+            // Parse as float
+            let numValue = parseFloat(value);
+            
+            // Check if valid number
+            if (isNaN(numValue) || numValue < 0) {
+                input.value = '0';
+                return;
+            }
+            
+            // Check if exceeds stock
+            if (maxStock > 0 && numValue > maxStock) {
+                numValue = maxStock;
+                input.value = numValue;
+                showNotification(`Maximum stock: ${maxStock}`, 'warning');
+            }
+            
+            // Round to 2 decimal places
+            if (value.includes('.') && value.split('.')[1].length > 2) {
+                input.value = numValue.toFixed(2);
+            }
+        }
+        
+        // Increment quantity by 1
+        function incrementQuantity(productId, productName, price, category) {
+            if (!cart[productId]) {
+                // Need to get product info from DOM
+                const input = document.querySelector(`input[data-product-id="${productId}"]`);
+                if (input) {
+                    const card = input.closest('.card');
+                    const name = productName || card.querySelector('.product-name span').textContent;
+                    const price = price || parseFloat(card.querySelector('.text-primary').textContent.replace('₹', ''));
+                    const category = category || card.closest('.accordion-item').querySelector('.accordion-button strong').textContent;
+                    
+                    cart[productId] = {
+                        id: productId,
+                        name: name,
+                        price: price,
+                        category: category,
+                        quantity: 1.0
+                    };
+                    showNotification(`${name} added to cart`, 'success');
+                }
+            } else {
+                // Increase by 1, but keep as decimal
+                cart[productId].quantity = parseFloat((cart[productId].quantity + 1).toFixed(2));
+                showNotification(`${cart[productId].name} quantity increased to ${cart[productId].quantity}`, 'success');
+            }
+            
+            saveCart();
+            updateProductDisplay(productId);
+        }
+        
+
         // Add to cart
-        function addToCart(productId, productName, price, category) {
+        function addToCart(productId, productName, price, category, quantity = 1) {
+            const qty = parseFloat(quantity);
+            
             if (!cart[productId]) {
                 cart[productId] = {
                     id: productId,
                     name: productName,
                     price: price,
                     category: category,
-                    quantity: 1
+                    quantity: qty
                 };
             } else {
-                cart[productId].quantity += 1;
+                // Add to existing quantity
+                cart[productId].quantity = parseFloat((cart[productId].quantity + qty).toFixed(2));
             }
             
             saveCart();
             updateProductDisplay(productId);
-            showNotification(`${productName} added to cart`, 'success');
+            showNotification(`${productName} added to cart (${qty})`, 'success');
         }
 
         // Remove from cart
-        function removeFromCart(productId) {
+        function removeFromCart(productId, decrementBy = 1) {
             const item = cart[productId];
             if (item) {
-                if (item.quantity > 1) {
-                    item.quantity -= 1;
-                } else {
+                const newQuantity = parseFloat((item.quantity - decrementBy).toFixed(2));
+                
+                if (newQuantity <= 0) {
                     delete cart[productId];
+                    showNotification(`${item.name} removed from cart`, 'info');
+                } else {
+                    item.quantity = newQuantity;
+                    showNotification(`${item.name} quantity decreased to ${newQuantity}`, 'info');
                 }
+                
                 saveCart();
                 updateProductDisplay(productId);
-                showNotification(`${item.name} removed from cart`, 'info');
             }
         }
 
@@ -484,8 +625,16 @@
         // Update product display
         function updateProductDisplay(productId) {
             const input = document.querySelector(`input[data-product-id="${productId}"]`);
+            const minusButton = input ? input.previousElementSibling : null;
+
             if (input) {
-                input.value = cart[productId] ? cart[productId].quantity : 0;
+                const currentQuantity = cart[productId] ? cart[productId].quantity : 0;
+                input.value = currentQuantity;
+
+                // Update minus button state
+                if (minusButton) {
+                    minusButton.disabled = currentQuantity <= 0;
+                }
             }
             updateCartCount();
             loadCartItems();
@@ -498,17 +647,25 @@
             updateCartCount();
         }
 
-        // Update cart count
+        // Update cart count to show total quantity (including decimals)
         function updateCartCount() {
             const cartCount = document.getElementById('cartCount');
             if (cartCount) {
-                const totalItems = Object.values(cart).reduce((sum, item) => sum + item.quantity, 0);
-                cartCount.textContent = totalItems;
+                const totalItems = Object.values(cart).reduce((sum, item) => {
+                    return parseFloat((sum + item.quantity).toFixed(2));
+                }, 0);
+
+                // Display as integer if whole number, other show 1 decimal
+                const displayCount = totalItems % 1 === 0 ?
+                    totalItems.toFixed(0):
+                    totalItems.toFixed(1);
+
+                cartCount.textContent = displayCount;
                 cartCount.style.display = totalItems > 0 ? 'inline-block' : 'none';
             }
         }
 
-        // Load cart items
+        // Load cart items with decimal support
         function loadCartItems() {
             const cartItemsContainer = document.getElementById('cartItems');
             const cartTotalElement = document.getElementById('cartTotal');
@@ -532,7 +689,7 @@
             let itemsHTML = '';
             
             cartItems.forEach(item => {
-                const itemTotal = item.price * item.quantity;
+                const itemTotal = parseFloat((item.price*item.quantity).toFixed(2));
                 total += itemTotal;
                 
                 itemsHTML += `
@@ -549,14 +706,14 @@
                                 <h6 class="text-primary mb-1">₹${itemTotal.toFixed(2)}</h6>
                                 <div class="btn-group btn-group-sm">
                                     <button class="btn btn-outline-secondary" 
-                                            onclick="updateProductQuantity('${item.id}', ${item.quantity - 1})">
+                                            onclick="decrementQuantity('${item.id}')">
                                         <i class="fas fa-minus"></i>
                                     </button>
                                     <button class="btn btn-outline-secondary" disabled>
-                                        ${item.quantity}
+                                        ${item.quantity % 1 === 0 ? item.quantity : item.quantity.toFixed(2)}
                                     </button>
                                     <button class="btn btn-outline-secondary" 
-                                            onclick="updateProductQuantity('${item.id}', ${item.quantity + 1})">
+                                            onclick="incrementQuantity('${item.id}')">
                                         <i class="fas fa-plus"></i>
                                     </button>
                                 </div>
@@ -577,7 +734,9 @@
             
             if (!checkoutBtn || !cartTotalBadge) return;
             
-            const total = Object.values(cart).reduce((sum, item) => sum + (item.price * item.quantity), 0);
+            const total = Object.values(cart).reduce((sum, item) => {
+                return parseFloat((sum + (item.price * item.quantity)).toFixed(2));
+            }, 0);
             const hasItems = Object.keys(cart).length > 0;
             
             checkoutBtn.disabled = !hasItems;
