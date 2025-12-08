@@ -510,9 +510,16 @@
                             <strong class="text-success">₹${(order.TotalAmount || 0).toFixed(2)}</strong>
                         </td>
                         <td>
-                            <span class="badge ${paymentStatusClass} status-badge d-inline-block text-center">
-                                ${order.PaymentStatus || 'Unknown'}
-                            </span>
+                            <div class="d-flex flex-column align-items-center">
+                                <span class="badge ${paymentStatusClass} status-badge d-inline-block text-center mb-1">
+                                    ${order.PaymentStatus || 'Unknown'}
+                                </span>
+                                ${order.PaymentStatus === 'Paid' && order.PaidTo ? `
+                                    <small class="text-success">
+                                        <i class="fas fa-user-check"></i> ${order.PaidTo}
+                                    </small>
+                                ` : ''}
+                            </div>
                         </td>
                         <td>
                             <span class="badge ${deliveryStatusClass} status-badge d-inline-block text-center">
@@ -626,6 +633,13 @@
                     </div>
                 </div>
                 
+                <!-- Show existing Paid To information -->
+                ${order.PaidTo ? `
+                    <div class="alert alert-success" id="paidToDisplay">
+                        <strong>Payment Received By:</strong> ${order.PaidTo}
+                    </div>
+                ` : ''}
+                
                 <!-- Status Update Cards -->
                 <div class="row mt-3">
                     <!-- Payment Status Card -->
@@ -693,6 +707,7 @@
                     </div>
                 </div>
                 
+                <!-- Rest of the modal content remains the same -->
                 <hr>
                 
                 <h6 class="text-muted">ORDER ITEMS</h6>
@@ -763,15 +778,113 @@
                     return;
                 }
                 
+                let paidTo = null;
+                
+                // If changing to "Paid", prompt for "Paid To"
+                if (newStatus === 'Paid') {
+                    // Check if there's already a Paid To value
+                    const currentPaidTo = window.currentOrder.PaidTo || '';
+                    
+                    // Show modal for Paid To input
+                    const modalContent = `
+                        <div class="modal fade" id="paidToModal" tabindex="-1" aria-hidden="true">
+                            <div class="modal-dialog">
+                                <div class="modal-content">
+                                    <div class="modal-header bg-success text-white">
+                                        <h5 class="modal-title">
+                                            <i class="fas fa-money-check-alt"></i> Mark as Paid
+                                        </h5>
+                                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <div class="mb-3">
+                                            <label class="form-label">Payment Received By:</label>
+                                            <input type="text" class="form-control" id="paidToInput" 
+                                                   placeholder="Enter who received the payment" 
+                                                   value="${currentPaidTo}">
+                                            <div class="form-text">Required when marking as Paid</div>
+                                        </div>
+                                        <div class="alert alert-info">
+                                            <i class="fas fa-info-circle"></i> 
+                                            This will update both payment status and the "Paid To" field.
+                                        </div>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                        <button type="button" class="btn btn-success" onclick="confirmPaymentUpdate()">
+                                            <i class="fas fa-check"></i> Update Payment
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    
+                    // Add modal to DOM
+                    const modalContainer = document.createElement('div');
+                    modalContainer.innerHTML = modalContent;
+                    document.body.appendChild(modalContainer);
+                    
+                    // Show modal
+                    const modal = new bootstrap.Modal(document.getElementById('paidToModal'));
+                    modal.show();
+                    
+                    // Wait for modal to be closed
+                    return new Promise((resolve) => {
+                        // Set up confirm function
+                        window.confirmPaymentUpdate = async () => {
+                            const paidToValue = document.getElementById('paidToInput').value.trim();
+                            if (!paidToValue) {
+                                showNotification('Please enter who received the payment', 'warning');
+                                return;
+                            }
+                            
+                            paidTo = paidToValue;
+                            
+                            // Remove modal
+                            modal.hide();
+                            modalContainer.remove();
+                            
+                            // Now call the API
+                            await callPaymentStatusAPI(newStatus, paidTo);
+                            resolve();
+                        };
+                        
+                        // Handle modal close without confirmation
+                        document.getElementById('paidToModal').addEventListener('hidden.bs.modal', function() {
+                            modalContainer.remove();
+                            resolve(); // Resolve without doing anything
+                        });
+                    });
+                } else {
+                    // For other statuses (Unpaid, Cash on Delivery), update without Paid To
+                    await callPaymentStatusAPI(newStatus, null);
+                }
+                
+            } catch (error) {
+                console.error('Error updating payment status:', error);
+                showNotification(`Error: ${error.message}`, 'danger');
+            }
+        }
+
+        // Helper to call payment status API
+        async function callPaymentStatusAPI(newStatus, paidTo) {
+            try {
+                const body = {
+                    payment_status: newStatus
+                };
+                
+                if (paidTo) {
+                    body.paid_to = paidTo;
+                }
+                
                 // Call the API to update payment status
                 const response = await fetch(`${CONFIG.API_BASE_URL}/api/orders/${window.currentOrderId}/payment-status`, {
                     method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({
-                        payment_status: newStatus
-                    })
+                    body: JSON.stringify(body)
                 });
                 
                 const result = await response.json();
@@ -797,6 +910,25 @@
                             btn.classList.add('active');
                         }
                     });
+                    
+                    // Also update the Paid To display if provided
+                    if (paidTo) {
+                        // Check if Paid To display exists, if not create it
+                        let paidToDisplay = document.getElementById('paidToDisplay');
+                        if (!paidToDisplay) {
+                            paidToDisplay = document.createElement('div');
+                            paidToDisplay.id = 'paidToDisplay';
+                            paidToDisplay.className = 'alert alert-success mt-3';
+                            document.getElementById('orderDetailsContent').querySelector('.card:first-child').after(paidToDisplay);
+                        }
+                        paidToDisplay.innerHTML = `<strong>Payment Received By:</strong> ${paidTo}`;
+                    } else if (newStatus !== 'Paid') {
+                        // Remove Paid To display if status is not Paid
+                        const paidToDisplay = document.getElementById('paidToDisplay');
+                        if (paidToDisplay) {
+                            paidToDisplay.remove();
+                        }
+                    }
                     
                     showNotification(`Payment status updated to ${newStatus}`, 'success');
                     
