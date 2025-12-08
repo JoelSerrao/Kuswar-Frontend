@@ -525,3 +525,20 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     margin-bottom: 0.5rem;
     border-radius: 4px;
 }
+
+.modal-lg { max-width: 900px; }
+.delivery-buttons .btn {
+    padding: 8px 5px;
+    font-size: 14px;
+    white-space: nowrap;
+}
+.delivery-buttons .btn i {
+    margin-right: 5px;
+}
+.card-body {
+    padding: 1.25rem;
+}
+.modal-body {
+    max-height: calc(100vh - 200px);
+    overflow-y: auto;
+}

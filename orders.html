@@ -10,9 +10,32 @@
         body { padding-top: 76px; background-color: #f5f7fb; }
         .order-row:hover { background-color: rgba(67, 97, 238, 0.05); cursor: pointer; }
         .status-badge { min-width: 100px; }
-        .modal-lg { max-width: 800px; }
+        .modal-lg { max-width: 900px; }
         .filter-btn.active { background-color: #0d6efd; color: white; }
         .table th { position: sticky; top: 0; background-color: #f8f9fa; z-index: 10; }
+        /* New styles for better modal layout */
+        .delivery-buttons .btn {
+            padding: 8px 5px;
+            font-size: 14px;
+            white-space: nowrap;
+        }
+        .delivery-buttons .btn i {
+            margin-right: 5px;
+        }
+        .card-body {
+            padding: 1.25rem;
+        }
+        .modal-body {
+            max-height: calc(100vh - 200px);
+            overflow-y: auto;
+        }
+        .time-slot-display {
+            background-color: #e7f3ff;
+            border-left: 4px solid #0d6efd;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+        }
     </style>
 </head>
 <body>
@@ -104,7 +127,7 @@
                                 <select class="form-control" id="deliveryStatusFilter">
                                     <option value="">All Deliveries</option>
                                     <option value="Pending">Pending</option>
-                                    <option value="Ready">Pending</option>
+                                    <option value="Ready">Ready</option>
                                     <option value="In Transit">In Transit</option>
                                     <option value="Delivered">Delivered</option>
                                     <option value="Cancelled">Cancelled</option>
@@ -220,8 +243,11 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-outline-primary" onclick="printBill()">
+                        <i class="fas fa-receipt"></i> Print Bill
+                    </button>
                     <button type="button" class="btn btn-primary" onclick="printOrderDetails()">
-                        <i class="fas fa-print"></i> Print
+                        <i class="fas fa-print"></i> Print Details
                     </button>
                 </div>
             </div>
@@ -234,10 +260,10 @@
         const CONFIG = {
             API_BASE_URL: "https://kuswar-backend.onrender.com"
         };
-    
+
         let allOrders = [];
         let currentFilteredOrders = [];
-    
+
         // Initialize when page loads
         document.addEventListener('DOMContentLoaded', function() {
             loadOrders();
@@ -247,7 +273,7 @@
             const today = new Date().toISOString().split('T')[0];
             document.getElementById('dateFilter').value = today;
         });
-    
+
         // Setup event listeners
         function setupEventListeners() {
             // Real-time search as you type
@@ -267,7 +293,7 @@
                 }
             });
         }
-    
+
         // Set quick filter
         function setFilter(type, value) {
             if (type === 'payment') {
@@ -283,7 +309,7 @@
             });
             event.target.classList.add('active');
         }
-    
+
         // Clear all filters
         function clearFilters() {
             document.getElementById('searchOrders').value = '';
@@ -298,7 +324,7 @@
             
             filterOrders();
         }
-    
+
         // Load orders from API
         async function loadOrders() {
             try {
@@ -355,7 +381,7 @@
                 showLoading(false);
             }
         }
-    
+
         // Filter orders based on current filters
         function filterOrders() {
             const searchTerm = document.getElementById('searchOrders').value.toLowerCase();
@@ -404,7 +430,7 @@
             renderOrdersTable();
             updateOrdersCount();
         }
-    
+
         // Render orders table
         function renderOrdersTable() {
             const ordersTable = document.getElementById('ordersTable');
@@ -545,7 +571,7 @@
             
             ordersTable.innerHTML = tableHTML;
         }
-    
+
         // Update orders count
         function updateOrdersCount() {
             const ordersCount = document.getElementById('ordersCount');
@@ -559,7 +585,7 @@
                 }
             }
         }
-    
+
         // View order details
         async function viewOrderDetails(orderId) {
             try {
@@ -577,7 +603,7 @@
                 showNotification(`Error: ${error.message}`, 'danger');
             }
         }
-    
+
         // Show order details in modal - UPDATED VERSION
         function showOrderDetailsModal(order) {
             // Format order date
@@ -706,7 +732,7 @@
                         </div>
                     </div>
                     
-                    <!-- Delivery Status Card - UPDATED with "Ready" -->
+                    <!-- Delivery Status Card - UPDATED with better layout -->
                     <div class="col-md-6">
                         <div class="card border-primary h-100">
                             <div class="card-header bg-primary text-white py-2">
@@ -714,31 +740,43 @@
                             </div>
                             <div class="card-body">
                                 <div class="text-center mb-3">
-                                    <span id="deliveryStatusBadge" class="badge ${deliveryStatus === 'Delivered' ? 'bg-success' : deliveryStatus === 'Pending' ? 'bg-warning text-dark' : deliveryStatus === 'In Transit' ? 'bg-info' : deliveryStatus === 'Ready' ? 'bg-primary' : 'bg-danger'} fs-6 p-2">
+                                    <span id="deliveryStatusBadge" class="badge ${deliveryStatus === 'Delivered' ? 'bg-success' : deliveryStatus === 'Pending' ? 'bg-warning text-dark' : deliveryStatus === 'In Transit' ? 'bg-info' : deliveryStatus === 'Ready' ? 'bg-primary' : 'bg-danger'} fs-6 p-2 mb-2">
                                         ${deliveryStatus}
                                     </span>
                                 </div>
-                                <div class="btn-group w-100" role="group">
-                                    <button type="button" class="btn btn-outline-warning ${deliveryStatus === 'Pending' ? 'active' : ''}" 
-                                            onclick="updateDeliveryStatus('Pending')">
-                                        <i class="fas fa-clock"></i> Pending
-                                    </button>
-                                    <button type="button" class="btn btn-outline-primary ${deliveryStatus === 'Ready' ? 'active' : ''}" 
-                                            onclick="updateDeliveryStatus('Ready')">
-                                        <i class="fas fa-check"></i> Ready
-                                    </button>
-                                    <button type="button" class="btn btn-outline-info ${deliveryStatus === 'In Transit' ? 'active' : ''}" 
-                                            onclick="updateDeliveryStatus('In Transit')">
-                                        <i class="fas fa-shipping-fast"></i> In Transit
-                                    </button>
-                                    <button type="button" class="btn btn-outline-success ${deliveryStatus === 'Delivered' ? 'active' : ''}" 
-                                            onclick="updateDeliveryStatus('Delivered')">
-                                        <i class="fas fa-check-circle"></i> Delivered
-                                    </button>
-                                    <button type="button" class="btn btn-outline-danger ${deliveryStatus === 'Cancelled' ? 'active' : ''}" 
-                                            onclick="updateDeliveryStatus('Cancelled')">
-                                        <i class="fas fa-times-circle"></i> Cancel
-                                    </button>
+                                <div class="delivery-buttons">
+                                    <div class="row g-1">
+                                        <div class="col-6">
+                                            <button type="button" class="btn btn-outline-warning w-100 ${deliveryStatus === 'Pending' ? 'active' : ''}" 
+                                                    onclick="updateDeliveryStatus('Pending')">
+                                                <i class="fas fa-clock"></i> Pending
+                                            </button>
+                                        </div>
+                                        <div class="col-6">
+                                            <button type="button" class="btn btn-outline-primary w-100 ${deliveryStatus === 'Ready' ? 'active' : ''}" 
+                                                    onclick="updateDeliveryStatus('Ready')">
+                                                <i class="fas fa-check"></i> Ready
+                                            </button>
+                                        </div>
+                                        <div class="col-6">
+                                            <button type="button" class="btn btn-outline-info w-100 ${deliveryStatus === 'In Transit' ? 'active' : ''}" 
+                                                    onclick="updateDeliveryStatus('In Transit')">
+                                                <i class="fas fa-shipping-fast"></i> In Transit
+                                            </button>
+                                        </div>
+                                        <div class="col-6">
+                                            <button type="button" class="btn btn-outline-success w-100 ${deliveryStatus === 'Delivered' ? 'active' : ''}" 
+                                                    onclick="updateDeliveryStatus('Delivered')">
+                                                <i class="fas fa-check-circle"></i> Delivered
+                                            </button>
+                                        </div>
+                                        <div class="col-12 mt-1">
+                                            <button type="button" class="btn btn-outline-danger w-100 ${deliveryStatus === 'Cancelled' ? 'active' : ''}" 
+                                                    onclick="updateDeliveryStatus('Cancelled')">
+                                                <i class="fas fa-times-circle"></i> Cancel Order
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -780,15 +818,15 @@
                     </table>
                 </div>
             `;
-                        
+            
             document.getElementById('orderDetailsModalLabel').textContent = `Order #${order.OrderID}`;
             document.getElementById('orderDetailsContent').innerHTML = modalContent;
-                        
+            
             // Show modal
             const modal = new bootstrap.Modal(document.getElementById('orderDetailsModal'));
             modal.show();
         }
-    
+
         // Update payment status
         async function updatePaymentStatus(newStatus) {
             try {
@@ -885,7 +923,7 @@
                 showNotification(`Error: ${error.message}`, 'danger');
             }
         }
-    
+
         // Helper to call payment status API
         async function callPaymentStatusAPI(newStatus, paidTo) {
             try {
@@ -964,7 +1002,7 @@
                 showNotification(`Error: ${error.message}`, 'danger');
             }
         }
-    
+
         // Update delivery status - UPDATED for "Ready" status
         async function updateDeliveryStatus(newStatus) {
             try {
@@ -1003,7 +1041,7 @@
                     document.getElementById('deliveryStatusBadge').textContent = newStatus;
                     
                     // Update active state of buttons
-                    document.querySelectorAll('.card:last-child .btn-group .btn').forEach(btn => {
+                    document.querySelectorAll('.delivery-buttons .btn').forEach(btn => {
                         btn.classList.remove('active');
                         if (btn.textContent.includes(newStatus)) {
                             btn.classList.add('active');
@@ -1025,7 +1063,58 @@
                 showNotification(`Error: ${error.message}`, 'danger');
             }
         }
-    
+
+        // Print bill - NEW FUNCTION
+        function printBill() {
+            const order = window.currentOrder;
+            if (!order) {
+                showNotification('No order selected', 'warning');
+                return;
+            }
+            
+            // Create a simple bill
+            let billContent = `
+                Traditionalzz Kuswar
+                ====================
+                Order ID: ${order.OrderID}
+                Date: ${new Date().toLocaleDateString()}
+                Time: ${new Date().toLocaleTimeString()}
+                
+                Customer: ${order.CustomerName}
+                Phone: ${order.Phone}
+                Address: ${order.CustomerAddress || 'N/A'}
+                
+                Items:
+                ------`;
+            
+            if (order.items && order.items.length > 0) {
+                order.items.forEach((item, index) => {
+                    billContent += `
+                ${index + 1}. ${item.ProductName} x${item.Quantity} @ ₹${item.UnitPrice} = ₹${item.Quantity * item.UnitPrice}`;
+                });
+            }
+            
+            billContent += `
+                
+                Total: ₹${order.TotalAmount}
+                Payment: ${order.PaymentStatus}
+                ${order.PaidTo ? `Received by: ${order.PaidTo}` : ''}
+                
+                Thank you for your order!`;
+            
+            // Open in new window and print
+            const billWindow = window.open('', '_blank', 'width=600,height=800');
+            billWindow.document.write('<pre>' + billContent + '</pre>');
+            billWindow.document.close();
+            billWindow.print();
+            
+            // Close modal
+            const modal = bootstrap.Modal.getInstance(document.getElementById('orderDetailsModal'));
+            if (modal) {
+                modal.hide();
+            }
+        }
+
         // Print order details
         function printOrderDetails() {
             const printContent = document.getElementById('orderDetailsContent').innerHTML;
@@ -1043,10 +1132,10 @@
             document.body.innerHTML = originalContent;
             
             // Re-initialize modal
-            const modal = new bootstrap.Modal(document.getElementById('orderDetailsModal'));
+            const modal = bootstrap.Modal.getInstance(document.getElementById('orderDetailsModal'));
             modal.show();
         }
-    
+
         // Export orders to CSV
         function exportOrders() {
             if (currentFilteredOrders.length === 0) {
@@ -1080,7 +1169,7 @@
             
             showNotification(`Exported ${currentFilteredOrders.length} orders`, 'success');
         }
-    
+
         // Show loading state
         function showLoading(isLoading) {
             const ordersTable = document.getElementById('ordersTable');
@@ -1097,7 +1186,7 @@
                 `;
             }
         }
-    
+
         // Show notification
         function showNotification(message, type = 'info') {
             // Create toast element
@@ -1116,7 +1205,7 @@
                         ${message}
                     </div>
                     <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
-                    </div>
+                </div>
             `;
             
             toastContainer.appendChild(toast);
@@ -1132,7 +1221,7 @@
                 toastContainer.remove();
             });
         }
-    
+
         // Make functions available globally
         window.loadOrders = loadOrders;
         window.filterOrders = filterOrders;
@@ -1142,6 +1231,7 @@
         window.updatePaymentStatus = updatePaymentStatus;
         window.updateDeliveryStatus = updateDeliveryStatus;
         window.printOrderDetails = printOrderDetails;
+        window.printBill = printBill;
         window.exportOrders = exportOrders;
     </script>
 </body>
