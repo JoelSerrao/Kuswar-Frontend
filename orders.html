@@ -11,6 +11,8 @@
         .order-row:hover { background-color: rgba(67, 97, 238, 0.05); cursor: pointer; }
         .status-badge { min-width: 100px; }
         .modal-lg { max-width: 800px; }
+        .filter-btn.active { background-color: #0d6efd; color: white; }
+        .table th { position: sticky; top: 0; background-color: #f8f9fa; z-index: 10; }
     </style>
 </head>
 <body>
@@ -64,31 +66,84 @@
             </div>
         </div>
         
-        <!-- Filters -->
+        <!-- Advanced Filters -->
         <div class="row mb-4">
             <div class="col-12">
                 <div class="card shadow-sm">
+                    <div class="card-header bg-primary text-white py-3">
+                        <h5 class="mb-0"><i class="fas fa-filter"></i> Advanced Filters</h5>
+                    </div>
                     <div class="card-body">
-                        <div class="row g-3">
-                            <div class="col-md-4">
-                                <input type="text" class="form-control" id="searchOrders" 
-                                       placeholder="Search by Order ID, Name, Phone...">
+                        <!-- Search -->
+                        <div class="row mb-3">
+                            <div class="col-md-12">
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="fas fa-search"></i></span>
+                                    <input type="text" class="form-control" id="searchOrders" 
+                                           placeholder="Search by Order ID, Customer Name, Phone, City, Area, Product...">
+                                    <button class="btn btn-outline-secondary" type="button" onclick="clearFilters()">
+                                        <i class="fas fa-times"></i> Clear
+                                    </button>
+                                </div>
                             </div>
+                        </div>
+                        
+                        <!-- Status Filters -->
+                        <div class="row g-3">
                             <div class="col-md-3">
-                                <select class="form-control" id="statusFilter">
-                                    <option value="">All Status</option>
+                                <label class="form-label">Payment Status</label>
+                                <select class="form-control" id="paymentStatusFilter">
+                                    <option value="">All Payments</option>
                                     <option value="Paid">Paid</option>
                                     <option value="Unpaid">Unpaid</option>
                                     <option value="Cash on Delivery">Cash on Delivery</option>
                                 </select>
                             </div>
                             <div class="col-md-3">
+                                <label class="form-label">Delivery Status</label>
+                                <select class="form-control" id="deliveryStatusFilter">
+                                    <option value="">All Deliveries</option>
+                                    <option value="Pending">Pending</option>
+                                    <option value="In Transit">In Transit</option>
+                                    <option value="Delivered">Delivered</option>
+                                    <option value="Cancelled">Cancelled</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Order Date</label>
                                 <input type="date" class="form-control" id="dateFilter">
                             </div>
-                            <div class="col-md-2">
-                                <button class="btn btn-primary w-100" onclick="loadOrders()">
-                                    <i class="fas fa-sync-alt"></i> Refresh
-                                </button>
+                            <div class="col-md-3">
+                                <label class="form-label">Quick Actions</label>
+                                <div class="d-grid gap-2">
+                                    <button class="btn btn-primary" onclick="loadOrders()">
+                                        <i class="fas fa-filter"></i> Apply Filters
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Quick Filter Buttons -->
+                        <div class="row mt-3">
+                            <div class="col-12">
+                                <div class="d-flex flex-wrap gap-2">
+                                    <small class="text-muted me-2">Quick Filters:</small>
+                                    <button class="btn btn-sm btn-outline-success filter-btn" onclick="setFilter('payment', 'Paid')">
+                                        <i class="fas fa-check-circle"></i> Paid Orders
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-warning filter-btn" onclick="setFilter('payment', 'Unpaid')">
+                                        <i class="fas fa-exclamation-circle"></i> Unpaid Orders
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-info filter-btn" onclick="setFilter('delivery', 'Delivered')">
+                                        <i class="fas fa-truck"></i> Delivered
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-secondary filter-btn" onclick="setFilter('delivery', 'Pending')">
+                                        <i class="fas fa-clock"></i> Pending Delivery
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-danger filter-btn" onclick="setFilter('delivery', 'Cancelled')">
+                                        <i class="fas fa-times-circle"></i> Cancelled
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -101,7 +156,7 @@
             <div class="col-12">
                 <div class="card shadow">
                     <div class="card-body p-0">
-                        <div class="table-responsive">
+                        <div class="table-responsive" style="max-height: 600px;">
                             <table class="table table-hover mb-0">
                                 <thead class="table-light">
                                     <tr>
@@ -110,13 +165,14 @@
                                         <th>Customer</th>
                                         <th>Items</th>
                                         <th class="text-end">Amount</th>
-                                        <th>Status</th>
+                                        <th>Payment Status</th>
+                                        <th>Delivery Status</th>
                                         <th class="text-center">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody id="ordersTable">
                                     <tr>
-                                        <td colspan="7" class="text-center py-5">
+                                        <td colspan="8" class="text-center py-5">
                                             <div class="spinner-border text-primary" role="status">
                                                 <span class="visually-hidden">Loading...</span>
                                             </div>
@@ -129,7 +185,10 @@
                         <div class="card-footer bg-white border-top-0">
                             <div class="d-flex justify-content-between align-items-center">
                                 <small class="text-muted" id="ordersCount">Loading...</small>
-                                <div>
+                                <div class="d-flex gap-2">
+                                    <button class="btn btn-sm btn-outline-primary" onclick="exportOrders()">
+                                        <i class="fas fa-download"></i> Export
+                                    </button>
                                     <button class="btn btn-sm btn-outline-secondary" onclick="loadOrders()">
                                         <i class="fas fa-redo"></i> Refresh
                                     </button>
@@ -179,22 +238,61 @@
         document.addEventListener('DOMContentLoaded', function() {
             loadOrders();
             setupEventListeners();
+            
+            // Set default date to today
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('dateFilter').value = today;
         });
 
         // Setup event listeners
         function setupEventListeners() {
-            // Search as you type
-            document.getElementById('searchOrders').addEventListener('input', filterOrders);
+            // Real-time search as you type
+            document.getElementById('searchOrders').addEventListener('input', function() {
+                filterOrders();
+            });
             
             // Filter on status change
-            document.getElementById('statusFilter').addEventListener('change', filterOrders);
-            
-            // Filter on date change
+            document.getElementById('paymentStatusFilter').addEventListener('change', filterOrders);
+            document.getElementById('deliveryStatusFilter').addEventListener('change', filterOrders);
             document.getElementById('dateFilter').addEventListener('change', filterOrders);
             
-            // Set today's date as default in date filter
-            const today = new Date().toISOString().split('T')[0];
-            document.getElementById('dateFilter').value = today;
+            // Enter key in search
+            document.getElementById('searchOrders').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    filterOrders();
+                }
+            });
+        }
+
+        // Set quick filter
+        function setFilter(type, value) {
+            if (type === 'payment') {
+                document.getElementById('paymentStatusFilter').value = value;
+            } else if (type === 'delivery') {
+                document.getElementById('deliveryStatusFilter').value = value;
+            }
+            filterOrders();
+            
+            // Highlight active filter button
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+        }
+
+        // Clear all filters
+        function clearFilters() {
+            document.getElementById('searchOrders').value = '';
+            document.getElementById('paymentStatusFilter').value = '';
+            document.getElementById('deliveryStatusFilter').value = '';
+            document.getElementById('dateFilter').value = '';
+            
+            // Clear active states
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            filterOrders();
         }
 
         // Load orders from API
@@ -203,14 +301,15 @@
                 showLoading(true);
                 
                 // Get filter values
-                const statusFilter = document.getElementById('statusFilter').value;
+                const paymentStatusFilter = document.getElementById('paymentStatusFilter').value;
+                const deliveryStatusFilter = document.getElementById('deliveryStatusFilter').value;
                 const dateFilter = document.getElementById('dateFilter').value;
                 
                 // Build query parameters
                 let params = new URLSearchParams();
                 
-                if (statusFilter) {
-                    params.append('payment_status', statusFilter);
+                if (paymentStatusFilter) {
+                    params.append('payment_status', paymentStatusFilter);
                 }
                 
                 if (dateFilter) {
@@ -218,19 +317,19 @@
                     params.append('to_date', dateFilter);
                 }
                 
+                // Note: delivery_status filter is handled client-side since API might not support it
+                
                 // Fetch orders from API
                 const response = await fetch(`${CONFIG.API_BASE_URL}/api/orders?${params.toString()}`);
                 const data = await response.json();
                 
                 if (data.success) {
                     allOrders = data.data || [];
-                    // Normalize time fields - handle both "OrderTime" & "Ordertime"
+                    // Normalize time field names
                     allOrders = allOrders.map(order => {
-                        // If Ordertime exists but OrderTime doesn't, copy it
                         if (order.Ordertime && !order.OrderTime) {
                             order.OrderTime = order.Ordertime;
                         }
-                        // Also make sure we have both uppercase and lowercase versions
                         if (order.OrderTime && !order.Ordertime) {
                             order.Ordertime = order.OrderTime;
                         }
@@ -238,8 +337,7 @@
                     });
                     
                     currentFilteredOrders = [...allOrders];
-                    renderOrdersTable();
-                    updateOrdersCount();
+                    filterOrders(); // Apply any existing filters
                     showNotification(`Loaded ${allOrders.length} orders`, 'success');
                 } else {
                     throw new Error(data.error || 'Failed to load orders');
@@ -257,26 +355,41 @@
         // Filter orders based on current filters
         function filterOrders() {
             const searchTerm = document.getElementById('searchOrders').value.toLowerCase();
-            const statusFilter = document.getElementById('statusFilter').value;
+            const paymentStatusFilter = document.getElementById('paymentStatusFilter').value;
+            const deliveryStatusFilter = document.getElementById('deliveryStatusFilter').value;
             const dateFilter = document.getElementById('dateFilter').value;
             
             currentFilteredOrders = allOrders.filter(order => {
-                // Search filter
+                // Search filter (search across multiple fields)
                 if (searchTerm) {
-                    const matchesSearch = 
-                        (order.OrderID && order.OrderID.toLowerCase().includes(searchTerm)) ||
-                        (order.CustomerName && order.CustomerName.toLowerCase().includes(searchTerm)) ||
-                        (order.Phone && order.Phone.toLowerCase().includes(searchTerm));
+                    const searchFields = [
+                        order.OrderID || '',
+                        order.CustomerName || '',
+                        order.Phone || '',
+                        order.CustomerCity || '',
+                        order.CustomerArea || '',
+                        // Also search in items
+                        ...(order.items ? order.items.map(item => item.ProductName || '') : [])
+                    ];
+                    
+                    const matchesSearch = searchFields.some(field => 
+                        field.toString().toLowerCase().includes(searchTerm)
+                    );
                     
                     if (!matchesSearch) return false;
                 }
                 
-                // Status filter (already handled by API, but we apply again for search compatibility)
-                if (statusFilter && order.PaymentStatus !== statusFilter) {
+                // Payment status filter
+                if (paymentStatusFilter && order.PaymentStatus !== paymentStatusFilter) {
                     return false;
                 }
                 
-                // Date filter (already handled by API)
+                // Delivery status filter (client-side)
+                if (deliveryStatusFilter && order.DeliveryStatus !== deliveryStatusFilter) {
+                    return false;
+                }
+                
+                // Date filter
                 if (dateFilter && order.OrderDate !== dateFilter) {
                     return false;
                 }
@@ -295,11 +408,14 @@
             if (!currentFilteredOrders || currentFilteredOrders.length === 0) {
                 ordersTable.innerHTML = `
                     <tr>
-                        <td colspan="7" class="text-center py-5">
+                        <td colspan="8" class="text-center py-5">
                             <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
                             <h5 class="text-muted">No orders found</h5>
                             <p class="text-muted small">Try changing your filters or check back later</p>
-                            <button class="btn btn-sm btn-outline-primary" onclick="loadOrders()">
+                            <button class="btn btn-sm btn-outline-primary" onclick="clearFilters()">
+                                <i class="fas fa-times"></i> Clear Filters
+                            </button>
+                            <button class="btn btn-sm btn-outline-secondary ms-2" onclick="loadOrders()">
                                 <i class="fas fa-redo"></i> Refresh
                             </button>
                         </td>
@@ -307,7 +423,7 @@
                 `;
                 return;
             }
-            
+        
             // Sort orders by date (newest first)
             const sortedOrders = [...currentFilteredOrders].sort((a, b) => {
                 const dateA = new Date(`${a.OrderDate} ${a.OrderTime || a.Ordertime || ''}`);
@@ -326,19 +442,13 @@
                 });
                 
                 // Get time from either OrderTime or Ordertime field
-                const time = order.OrderTime || order.Ordertime || 'N/A';
-                
-                // Format the time to HH:MM:SS if it exists
-                let formattedTime = time;
-                if (time !== 'N/A') {
-                    // Try to parse and format the time
+                const time = order.OrderTime || order.Ordertime || '';
+                let formattedTime = 'N/A';
+                if (time && time !== 'N/A') {
                     try {
                         const timeParts = time.split(':');
                         if (timeParts.length >= 2) {
                             formattedTime = `${timeParts[0]}:${timeParts[1]}`;
-                            if (timeParts.length === 3) {
-                                formattedTime += `:${timeParts[2]}`;
-                            }
                         }
                     } catch (e) {
                         console.log('Error formatting time:', e);
@@ -354,69 +464,69 @@
                     ).join('');
                     
                     if (order.items.length > 2) {
-                        itemsList += `<div class="small text-primary">+${order.items.length - 2} more items</div>`;
+                        itemsList += `<div class="small text-primary">+${order.items.length - 2} more</div>`;
                     }
                 } else {
                     itemsList = '<div class="small text-muted">No items</div>';
                 }
                 
-                // Status badge styling
-                let statusClass = 'bg-secondary';
+                // Payment status badge styling
+                let paymentStatusClass = 'bg-secondary';
                 if (order.PaymentStatus === 'Paid') {
-                    statusClass = 'bg-success';
+                    paymentStatusClass = 'bg-success';
                 } else if (order.PaymentStatus === 'Unpaid') {
-                    statusClass = 'bg-warning text-dark';
+                    paymentStatusClass = 'bg-warning text-dark';
                 } else if (order.PaymentStatus === 'Cash on Delivery') {
-                    statusClass = 'bg-info';
+                    paymentStatusClass = 'bg-info';
                 }
-           	 	// Delivery status badge 
-            	const deliveryStatus = order.DeliveryStatus || 'Pending';
-            	let deliveryStatusClass = 'bg-warning text-dark';
-            	if (deliveryStatus === 'Delivered') {
-                	deliveryStatusClass = 'bg-success';
-            	} else if (deliveryStatus === 'Cancelled') {
-                	deliveryStatusClass = 'bg-danger';
-            	} else if (deliveryStatus === 'In Transit') {
-                	deliveryStatusClass = 'bg-info';
-            	}
                 
-            tableHTML += `
-                <tr class="order-row" onclick="viewOrderDetails('${order.OrderID}')">
-                    <td>
-                        <span class="badge bg-primary">#${order.OrderID}</span>
-                    </td>
-                    <td>
-                        <div>${formattedDate}</div>
-                        <small class="text-muted">${formattedTime}</small>
-                    </td>
-                    <td>
-                        <strong>${order.CustomerName || 'N/A'}</strong>
-                        <div class="small text-muted">${order.Phone || 'N/A'}</div>
-                        <div class="small">${order.CustomerCity || ''} - ${order.CustomerArea || ''}</div>
-                    </td>
-                    <td>${itemsList}</td>
-                    <td class="text-end">
-                        <strong class="text-success">₹${(order.TotalAmount || 0).toFixed(2)}</strong>
-                    </td>
-                    <td>
-                        <div>
-                            <span class="badge ${statusClass} status-badge d-inline-block text-center mb-1">
+                // Delivery status badge styling
+                const deliveryStatus = order.DeliveryStatus || 'Pending';
+                let deliveryStatusClass = 'bg-warning text-dark';
+                if (deliveryStatus === 'Delivered') {
+                    deliveryStatusClass = 'bg-success';
+                } else if (deliveryStatus === 'Cancelled') {
+                    deliveryStatusClass = 'bg-danger';
+                } else if (deliveryStatus === 'In Transit') {
+                    deliveryStatusClass = 'bg-info';
+                }
+                
+                tableHTML += `
+                    <tr class="order-row" onclick="viewOrderDetails('${order.OrderID}')">
+                        <td>
+                            <span class="badge bg-primary">#${order.OrderID}</span>
+                        </td>
+                        <td>
+                            <div>${formattedDate}</div>
+                            <small class="text-muted">${formattedTime}</small>
+                        </td>
+                        <td>
+                            <strong>${order.CustomerName || 'N/A'}</strong>
+                            <div class="small text-muted">${order.Phone || 'N/A'}</div>
+                            <div class="small">${order.CustomerCity || ''} - ${order.CustomerArea || ''}</div>
+                        </td>
+                        <td>${itemsList}</td>
+                        <td class="text-end">
+                            <strong class="text-success">₹${(order.TotalAmount || 0).toFixed(2)}</strong>
+                        </td>
+                        <td>
+                            <span class="badge ${paymentStatusClass} status-badge d-inline-block text-center">
                                 ${order.PaymentStatus || 'Unknown'}
                             </span>
-                            <br>
+                        </td>
+                        <td>
                             <span class="badge ${deliveryStatusClass} status-badge d-inline-block text-center">
                                 ${deliveryStatus}
                             </span>
-                        </div>
-                    </td>
-                    <td class="text-center">
-                        <button class="btn btn-sm btn-outline-primary" 
-                                onclick="event.stopPropagation(); viewOrderDetails('${order.OrderID}')">
-                            <i class="fas fa-eye"></i> View
-                        </button>
-                    </td>
-                </tr>
-            `;
+                        </td>
+                        <td class="text-center">
+                            <button class="btn btn-sm btn-outline-primary" 
+                                    onclick="event.stopPropagation(); viewOrderDetails('${order.OrderID}')">
+                                <i class="fas fa-edit"></i> Manage
+                            </button>
+                        </td>
+                    </tr>
+                `;
             });
             
             ordersTable.innerHTML = tableHTML;
@@ -426,7 +536,13 @@
         function updateOrdersCount() {
             const ordersCount = document.getElementById('ordersCount');
             if (ordersCount) {
-                ordersCount.textContent = `Showing ${currentFilteredOrders.length} of ${allOrders.length} orders`;
+                const total = allOrders.length;
+                const filtered = currentFilteredOrders.length;
+                if (total === filtered) {
+                    ordersCount.textContent = `Showing ${total} orders`;
+                } else {
+                    ordersCount.textContent = `Showing ${filtered} of ${total} orders`;
+                }
             }
         }
 
@@ -437,24 +553,10 @@
                 const order = currentFilteredOrders.find(o => o.OrderID === orderId);
                 
                 if (!order) {
-                    // Try to fetch single order from API
-                    const response = await fetch(`${CONFIG.API_BASE_URL}/api/orders?phone=&payment_status=&from_date=&to_date=`);
-                    const data = await response.json();
-                    
-                    if (data.success) {
-                        const allOrders = data.data || [];
-                        const foundOrder = allOrders.find(o => o.OrderID === orderId);
-                        if (foundOrder) {
-                            showOrderDetailsModal(foundOrder);
-                        } else {
-                            throw new Error('Order not found');
-                        }
-                    } else {
-                        throw new Error(data.error || 'Failed to load order');
-                    }
-                } else {
-                    showOrderDetailsModal(order);
+                    throw new Error('Order not found in current view');
                 }
+                
+                showOrderDetailsModal(order);
                 
             } catch (error) {
                 console.error('Error loading order details:', error);
@@ -472,6 +574,7 @@
                 month: 'long',
                 day: 'numeric'
             });
+            
             // Get time from either OrderTime or Ordertime field
             const time = order.OrderTime || order.Ordertime || 'N/A';
             
@@ -491,29 +594,12 @@
                 }
             }
             
-            // Calculate item totals
-            const itemsHTML = order.items && order.items.length > 0 ? order.items.map(item => {
-                const itemTotal = (item.Quantity || 1) * (item.UnitPrice || 0);
-                return `
-                    <tr>
-                        <td>${item.ProductName || 'Product'}</td>
-                        <td class="text-center">${item.Quantity || 1}</td>
-                        <td class="text-end">₹${(item.UnitPrice || 0).toFixed(2)}</td>
-                        <td class="text-end">₹${itemTotal.toFixed(2)}</td>
-                    </tr>
-                `;
-            }).join('') : '<tr><td colspan="4" class="text-center">No items</td></tr>';
+            // Get delivery status
+            const deliveryStatus = order.DeliveryStatus || 'Pending';
             
-            // Status badge
-            let statusClass = 'bg-secondary';
-            let statusText = order.PaymentStatus || 'Unknown';
-            if (order.PaymentStatus === 'Paid') {
-                statusClass = 'bg-success';
-            } else if (order.PaymentStatus === 'Unpaid') {
-                statusClass = 'bg-warning text-dark';
-            } else if (order.PaymentStatus === 'Cash on Delivery') {
-                statusClass = 'bg-info';
-            }
+            // Store order ID globally for update functions
+            window.currentOrderId = order.OrderID;
+            window.currentOrder = order;
             
             // Build modal content
             const modalContent = `
@@ -525,7 +611,8 @@
                             <strong>Date:</strong> ${formattedDate}<br>
                             <strong>Time:</strong> ${formattedTime}<br>
                             <strong>Source:</strong> ${order.OrderSource || 'Website'}<br>
-                            <strong>Status:</strong> <span class="badge ${statusClass}">${statusText}</span>
+                            <strong>Created By:</strong> ${order.CreatedBy || 'API'}<br>
+                            <strong>Customer ID:</strong> ${order.CustomerID || 'N/A'}
                         </div>
                     </div>
                     <div class="col-md-6">
@@ -533,8 +620,75 @@
                         <div class="mb-3">
                             <strong>Name:</strong> ${order.CustomerName || 'N/A'}<br>
                             <strong>Phone:</strong> ${order.Phone || 'N/A'}<br>
-                            <strong>Address:</strong> ${order.CustomerArea || ''}, ${order.CustomerCity || ''}<br>
-                            <strong>Customer ID:</strong> ${order.CustomerID || 'N/A'}
+                            <strong>City:</strong> ${order.CustomerCity || ''}<br>
+                            <strong>Area:</strong> ${order.CustomerArea || ''}
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Status Update Cards -->
+                <div class="row mt-3">
+                    <!-- Payment Status Card -->
+                    <div class="col-md-6">
+                        <div class="card border-primary h-100">
+                            <div class="card-header bg-primary text-white py-2">
+                                <h6 class="mb-0"><i class="fas fa-credit-card"></i> Payment Status</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="text-center mb-3">
+                                    <span id="paymentStatusBadge" class="badge ${order.PaymentStatus === 'Paid' ? 'bg-success' : order.PaymentStatus === 'Unpaid' ? 'bg-warning text-dark' : 'bg-info'} fs-6 p-2">
+                                        ${order.PaymentStatus || 'Unknown'}
+                                    </span>
+                                </div>
+                                <div class="btn-group w-100" role="group">
+                                    <button type="button" class="btn btn-outline-success ${order.PaymentStatus === 'Paid' ? 'active' : ''}" 
+                                            onclick="updatePaymentStatus('Paid')">
+                                        <i class="fas fa-check-circle"></i> Paid
+                                    </button>
+                                    <button type="button" class="btn btn-outline-warning ${order.PaymentStatus === 'Unpaid' ? 'active' : ''}" 
+                                            onclick="updatePaymentStatus('Unpaid')">
+                                        <i class="fas fa-clock"></i> Unpaid
+                                    </button>
+                                    <button type="button" class="btn btn-outline-info ${order.PaymentStatus === 'Cash on Delivery' ? 'active' : ''}" 
+                                            onclick="updatePaymentStatus('Cash on Delivery')">
+                                        <i class="fas fa-money-bill-wave"></i> COD
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Delivery Status Card -->
+                    <div class="col-md-6">
+                        <div class="card border-primary h-100">
+                            <div class="card-header bg-primary text-white py-2">
+                                <h6 class="mb-0"><i class="fas fa-truck"></i> Delivery Status</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="text-center mb-3">
+                                    <span id="deliveryStatusBadge" class="badge ${deliveryStatus === 'Delivered' ? 'bg-success' : deliveryStatus === 'Pending' ? 'bg-warning text-dark' : deliveryStatus === 'In Transit' ? 'bg-info' : 'bg-danger'} fs-6 p-2">
+                                        ${deliveryStatus}
+                                    </span>
+                                </div>
+                                <div class="btn-group w-100" role="group">
+                                    <button type="button" class="btn btn-outline-warning ${deliveryStatus === 'Pending' ? 'active' : ''}" 
+                                            onclick="updateDeliveryStatus('Pending')">
+                                        <i class="fas fa-clock"></i> Pending
+                                    </button>
+                                    <button type="button" class="btn btn-outline-info ${deliveryStatus === 'In Transit' ? 'active' : ''}" 
+                                            onclick="updateDeliveryStatus('In Transit')">
+                                        <i class="fas fa-shipping-fast"></i> In Transit
+                                    </button>
+                                    <button type="button" class="btn btn-outline-success ${deliveryStatus === 'Delivered' ? 'active' : ''}" 
+                                            onclick="updateDeliveryStatus('Delivered')">
+                                        <i class="fas fa-check-circle"></i> Delivered
+                                    </button>
+                                    <button type="button" class="btn btn-outline-danger ${deliveryStatus === 'Cancelled' ? 'active' : ''}" 
+                                            onclick="updateDeliveryStatus('Cancelled')">
+                                        <i class="fas fa-times-circle"></i> Cancel
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -553,7 +707,17 @@
                             </tr>
                         </thead>
                         <tbody>
-                            ${itemsHTML}
+                            ${order.items && order.items.length > 0 ? order.items.map(item => {
+                                const itemTotal = (item.Quantity || 1) * (item.UnitPrice || 0);
+                                return `
+                                    <tr>
+                                        <td>${item.ProductName || 'Product'}</td>
+                                        <td class="text-center">${item.Quantity || 1}</td>
+                                        <td class="text-end">₹${(item.UnitPrice || 0).toFixed(2)}</td>
+                                        <td class="text-end">₹${itemTotal.toFixed(2)}</td>
+                                    </tr>
+                                `;
+                            }).join('') : '<tr><td colspan="4" class="text-center">No items</td></tr>'}
                         </tbody>
                         <tfoot>
                             <tr>
@@ -591,6 +755,124 @@
             modal.show();
         }
 
+        // Update payment status
+        async function updatePaymentStatus(newStatus) {
+            try {
+                if (!window.currentOrderId) {
+                    showNotification('No order selected', 'warning');
+                    return;
+                }
+                
+                // Call the API to update payment status
+                const response = await fetch(`${CONFIG.API_BASE_URL}/api/orders/${window.currentOrderId}/payment-status`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        payment_status: newStatus
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    // Update the badge
+                    let badgeClass = 'bg-secondary';
+                    if (newStatus === 'Paid') {
+                        badgeClass = 'bg-success';
+                    } else if (newStatus === 'Unpaid') {
+                        badgeClass = 'bg-warning text-dark';
+                    } else if (newStatus === 'Cash on Delivery') {
+                        badgeClass = 'bg-info';
+                    }
+                    
+                    document.getElementById('paymentStatusBadge').className = `badge ${badgeClass} fs-6 p-2`;
+                    document.getElementById('paymentStatusBadge').textContent = newStatus;
+                    
+                    // Update active state of buttons
+                    document.querySelectorAll('.card:first-child .btn-group .btn').forEach(btn => {
+                        btn.classList.remove('active');
+                        if (btn.textContent.includes(newStatus)) {
+                            btn.classList.add('active');
+                        }
+                    });
+                    
+                    showNotification(`Payment status updated to ${newStatus}`, 'success');
+                    
+                    // Refresh the orders list after a short delay
+                    setTimeout(() => {
+                        loadOrders();
+                    }, 1500);
+                } else {
+                    throw new Error(result.error || 'Failed to update status');
+                }
+                
+            } catch (error) {
+                console.error('Error updating payment status:', error);
+                showNotification(`Error: ${error.message}`, 'danger');
+            }
+        }
+
+        // Update delivery status
+        async function updateDeliveryStatus(newStatus) {
+            try {
+                if (!window.currentOrderId) {
+                    showNotification('No order selected', 'warning');
+                    return;
+                }
+                
+                // Call the API to update delivery status
+                const response = await fetch(`${CONFIG.API_BASE_URL}/api/orders/${window.currentOrderId}/delivery-status`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        delivery_status: newStatus
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    // Update the badge
+                    let badgeClass = 'bg-warning text-dark';
+                    if (newStatus === 'Delivered') {
+                        badgeClass = 'bg-success';
+                    } else if (newStatus === 'Cancelled') {
+                        badgeClass = 'bg-danger';
+                    } else if (newStatus === 'In Transit') {
+                        badgeClass = 'bg-info';
+                    }
+                    
+                    document.getElementById('deliveryStatusBadge').className = `badge ${badgeClass} fs-6 p-2`;
+                    document.getElementById('deliveryStatusBadge').textContent = newStatus;
+                    
+                    // Update active state of buttons
+                    document.querySelectorAll('.card:last-child .btn-group .btn').forEach(btn => {
+                        btn.classList.remove('active');
+                        if (btn.textContent.includes(newStatus)) {
+                            btn.classList.add('active');
+                        }
+                    });
+                    
+                    showNotification(`Delivery status updated to ${newStatus}`, 'success');
+                    
+                    // Refresh the orders list after a short delay
+                    setTimeout(() => {
+                        loadOrders();
+                    }, 1500);
+                } else {
+                    throw new Error(result.error || 'Failed to update status');
+                }
+                
+            } catch (error) {
+                console.error('Error updating delivery status:', error);
+                showNotification(`Error: ${error.message}`, 'danger');
+            }
+        }
+
         // Print order details
         function printOrderDetails() {
             const printContent = document.getElementById('orderDetailsContent').innerHTML;
@@ -598,7 +880,7 @@
             
             document.body.innerHTML = `
                 <div class="container mt-4">
-                    <h2>Order Invoice</h2>
+                    <h2>Order Invoice - Kuswar Gifts</h2>
                     <hr>
                     ${printContent}
                 </div>
@@ -612,13 +894,46 @@
             modal.show();
         }
 
+        // Export orders to CSV
+        function exportOrders() {
+            if (currentFilteredOrders.length === 0) {
+                showNotification('No orders to export', 'warning');
+                return;
+            }
+            
+            // Create CSV content
+            let csv = 'Order ID,Date,Time,Customer Name,Phone,City,Area,Items Count,Total Amount,Payment Status,Delivery Status\n';
+            
+            currentFilteredOrders.forEach(order => {
+                const time = order.OrderTime || order.Ordertime || '';
+                const itemsCount = order.items ? order.items.length : 0;
+                
+                csv += `"${order.OrderID || ''}","${order.OrderDate || ''}","${time}","${order.CustomerName || ''}",`;
+                csv += `"${order.Phone || ''}","${order.CustomerCity || ''}","${order.CustomerArea || ''}",`;
+                csv += `"${itemsCount}","${order.TotalAmount || 0}","${order.PaymentStatus || ''}","${order.DeliveryStatus || 'Pending'}"\n`;
+            });
+            
+            // Create download link
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `orders_${new Date().toISOString().split('T')[0]}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+            
+            showNotification(`Exported ${currentFilteredOrders.length} orders`, 'success');
+        }
+
         // Show loading state
         function showLoading(isLoading) {
             const ordersTable = document.getElementById('ordersTable');
             if (isLoading) {
                 ordersTable.innerHTML = `
                     <tr>
-                        <td colspan="7" class="text-center py-5">
+                        <td colspan="8" class="text-center py-5">
                             <div class="spinner-border text-primary" role="status">
                                 <span class="visually-hidden">Loading...</span>
                             </div>
@@ -664,279 +979,16 @@
             });
         }
 
-                function showOrderDetailsModal(order) {
-            // Format order date
-            const orderDate = new Date(order.OrderDate);
-            const formattedDate = orderDate.toLocaleDateString('en-IN', {
-                weekday: 'long',
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric'
-            });
-            
-            // Get time from either OrderTime or Ordertime field
-            const time = order.OrderTime || order.Ordertime || 'N/A';
-            
-            // Format the time properly
-            let formattedTime = time;
-            if (time !== 'N/A') {
-                try {
-                    const timeParts = time.split(':');
-                    if (timeParts.length >= 2) {
-                        formattedTime = `${timeParts[0].padStart(2, '0')}:${timeParts[1].padStart(2, '0')}`;
-                        if (timeParts.length === 3) {
-                            formattedTime += `:${timeParts[2].padStart(2, '0')}`;
-                        }
-                    }
-                } catch (e) {
-                    console.log('Error formatting time:', e);
-                }
-            }
-            
-            // Get delivery status
-            const deliveryStatus = order.DeliveryStatus || 'Pending';
-            
-            // Delivery status badge styling
-            let deliveryStatusClass = 'bg-warning text-dark';
-            if (deliveryStatus === 'Delivered') {
-                deliveryStatusClass = 'bg-success';
-            } else if (deliveryStatus === 'Cancelled') {
-                deliveryStatusClass = 'bg-danger';
-            } else if (deliveryStatus === 'In Transit') {
-                deliveryStatusClass = 'bg-info';
-            } else if (deliveryStatus === 'Pending') {
-                deliveryStatusClass = 'bg-warning text-dark';
-            }
-            
-            // Calculate item totals
-            const itemsHTML = order.items && order.items.length > 0 ? order.items.map(item => {
-                const itemTotal = (item.Quantity || 1) * (item.UnitPrice || 0);
-                return `
-                    <tr>
-                        <td>${item.ProductName || 'Product'}</td>
-                        <td class="text-center">${item.Quantity || 1}</td>
-                        <td class="text-end">₹${(item.UnitPrice || 0).toFixed(2)}</td>
-                        <td class="text-end">₹${itemTotal.toFixed(2)}</td>
-                    </tr>
-                `;
-            }).join('') : '<tr><td colspan="4" class="text-center">No items</td></tr>';
-            
-            // Payment status badge
-            let statusClass = 'bg-secondary';
-            let statusText = order.PaymentStatus || 'Unknown';
-            if (order.PaymentStatus === 'Paid') {
-                statusClass = 'bg-success';
-            } else if (order.PaymentStatus === 'Unpaid') {
-                statusClass = 'bg-warning text-dark';
-            } else if (order.PaymentStatus === 'Cash on Delivery') {
-                statusClass = 'bg-info';
-            }
-            
-            // Store order ID globally for update function
-            window.currentOrderId = order.OrderID;
-            
-            // Build modal content
-            const modalContent = `
-                <div class="row">
-                    <div class="col-md-6">
-                        <h6 class="text-muted">ORDER INFORMATION</h6>
-                        <div class="mb-3">
-                            <strong>Order ID:</strong> ${order.OrderID}<br>
-                            <strong>Date:</strong> ${formattedDate}<br>
-                            <strong>Time:</strong> ${formattedTime}<br>
-                            <strong>Source:</strong> ${order.OrderSource || 'Website'}<br>
-                            <strong>Payment Status:</strong> <span class="badge ${statusClass}">${statusText}</span><br>
-                            <strong>Delivery Status:</strong> 
-                            <span class="badge ${deliveryStatusClass}" id="deliveryStatusBadge">
-                                ${deliveryStatus}
-                            </span>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <h6 class="text-muted">CUSTOMER INFORMATION</h6>
-                        <div class="mb-3">
-                            <strong>Name:</strong> ${order.CustomerName || 'N/A'}<br>
-                            <strong>Phone:</strong> ${order.Phone || 'N/A'}<br>
-                            <strong>Address:</strong> ${order.CustomerArea || ''}, ${order.CustomerCity || ''}<br>
-                            <strong>Customer ID:</strong> ${order.CustomerID || 'N/A'}
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Delivery Status Update Section -->
-                <div class="card mt-3 border-primary">
-                    <div class="card-header bg-primary text-white py-2">
-                        <h6 class="mb-0"><i class="fas fa-truck"></i> Update Delivery Status</h6>
-                    </div>
-                    <div class="card-body">
-                        <div class="row align-items-center">
-                            <div class="col-md-8">
-                                <div class="btn-group" role="group">
-                                    <button type="button" class="btn btn-outline-success ${deliveryStatus === 'Delivered' ? 'active' : ''}" 
-                                            onclick="updateDeliveryStatus('Delivered')">
-                                        <i class="fas fa-check-circle"></i> Delivered
-                                    </button>
-                                    <button type="button" class="btn btn-outline-warning ${deliveryStatus === 'In Transit' ? 'active' : ''}" 
-                                            onclick="updateDeliveryStatus('In Transit')">
-                                        <i class="fas fa-shipping-fast"></i> In Transit
-                                    </button>
-                                    <button type="button" class="btn btn-outline-secondary ${deliveryStatus === 'Pending' ? 'active' : ''}" 
-                                            onclick="updateDeliveryStatus('Pending')">
-                                        <i class="fas fa-clock"></i> Pending
-                                    </button>
-                                    <button type="button" class="btn btn-outline-danger ${deliveryStatus === 'Cancelled' ? 'active' : ''}" 
-                                            onclick="updateDeliveryStatus('Cancelled')">
-                                        <i class="fas fa-times-circle"></i> Cancelled
-                                    </button>
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <select class="form-control" id="deliveryStatusSelect">
-                                    <option value="Pending" ${deliveryStatus === 'Pending' ? 'selected' : ''}>Pending</option>
-                                    <option value="In Transit" ${deliveryStatus === 'In Transit' ? 'selected' : ''}>In Transit</option>
-                                    <option value="Delivered" ${deliveryStatus === 'Delivered' ? 'selected' : ''}>Delivered</option>
-                                    <option value="Cancelled" ${deliveryStatus === 'Cancelled' ? 'selected' : ''}>Cancelled</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="mt-3">
-                            <button class="btn btn-primary" onclick="updateDeliveryStatusFromSelect()">
-                                <i class="fas fa-save"></i> Update Status
-                            </button>
-                            <small class="text-muted ms-2">Click a button above or select and update</small>
-                        </div>
-                    </div>
-                </div>
-                
-                <hr>
-                
-                <h6 class="text-muted">ORDER ITEMS</h6>
-                <div class="table-responsive">
-                    <table class="table table-sm">
-                        <thead>
-                            <tr>
-                                <th>Product</th>
-                                <th class="text-center">Qty</th>
-                                <th class="text-end">Price</th>
-                                <th class="text-end">Total</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${itemsHTML}
-                        </tbody>
-                        <tfoot>
-                            <tr>
-                                <td colspan="3" class="text-end"><strong>Total Amount:</strong></td>
-                                <td class="text-end"><strong class="text-success">₹${(order.TotalAmount || 0).toFixed(2)}</strong></td>
-                            </tr>
-                        </tfoot>
-                    </table>
-                </div>
-                
-                ${order.notes ? `
-                    <div class="alert alert-light mt-3">
-                        <strong>Notes:</strong> ${order.notes}
-                    </div>
-                ` : ''}
-                
-                ${order.DeliveryDate ? `
-                    <div class="alert alert-info mt-3">
-                        <strong>Delivery Date:</strong> ${order.DeliveryDate}
-                    </div>
-                ` : ''}
-                
-                ${order.PaidTo ? `
-                    <div class="alert alert-success mt-3">
-                        <strong>Payment Received By:</strong> ${order.PaidTo}
-                    </div>
-                ` : ''}
-            `;
-                
-            document.getElementById('orderDetailsModalLabel').textContent = `Order #${order.OrderID}`;
-            document.getElementById('orderDetailsContent').innerHTML = modalContent;
-                
-            // Show modal
-            const modal = new bootstrap.Modal(document.getElementById('orderDetailsModal'));
-            modal.show();
-        }
-        
-        // Update delivery status from button click
-        async function updateDeliveryStatus(newStatus) {
-            try {
-                if (!window.currentOrderId) {
-                    showNotification('No order selected', 'warning');
-                    return;
-                }
-                
-                // Update the select dropdown to match
-                document.getElementById('deliveryStatusSelect').value = newStatus;
-                
-                // Call the API to update status
-                const response = await fetch(`${CONFIG.API_BASE_URL}/api/orders/${window.currentOrderId}/delivery-status`, {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        delivery_status: newStatus
-                    })
-                });
-                
-                const result = await response.json();
-                
-                if (result.success) {
-                    // Update the badge
-                    let badgeClass = 'bg-warning text-dark';
-                    if (newStatus === 'Delivered') {
-                        badgeClass = 'bg-success';
-                    } else if (newStatus === 'Cancelled') {
-                        badgeClass = 'bg-danger';
-                    } else if (newStatus === 'In Transit') {
-                        badgeClass = 'bg-info';
-                    }
-                    
-                    document.getElementById('deliveryStatusBadge').className = `badge ${badgeClass}`;
-                    document.getElementById('deliveryStatusBadge').textContent = newStatus;
-                    
-                    // Update active state of buttons
-                    document.querySelectorAll('.btn-group .btn').forEach(btn => {
-                        btn.classList.remove('active');
-                        if (btn.textContent.includes(newStatus)) {
-                            btn.classList.add('active');
-                        }
-                    });
-                    
-                    showNotification(`Delivery status updated to ${newStatus}`, 'success');
-                    
-                    // Refresh the orders list after a short delay
-                    setTimeout(() => {
-                        loadOrders();
-                    }, 1500);
-                } else {
-                    throw new Error(result.error || 'Failed to update status');
-                }
-                
-            } catch (error) {
-                console.error('Error updating delivery status:', error);
-                showNotification(`Error: ${error.message}`, 'danger');
-            }
-        }
-        
-        // Update delivery status from select dropdown
-        async function updateDeliveryStatusFromSelect() {
-            const select = document.getElementById('deliveryStatusSelect');
-            const newStatus = select.value;
-            
-            if (newStatus) {
-                await updateDeliveryStatus(newStatus);
-            }
-        }
-
         // Make functions available globally
         window.loadOrders = loadOrders;
         window.filterOrders = filterOrders;
+        window.clearFilters = clearFilters;
+        window.setFilter = setFilter;
         window.viewOrderDetails = viewOrderDetails;
+        window.updatePaymentStatus = updatePaymentStatus;
+        window.updateDeliveryStatus = updateDeliveryStatus;
         window.printOrderDetails = printOrderDetails;
+        window.exportOrders = exportOrders;
     </script>
 </body>
 </html>
