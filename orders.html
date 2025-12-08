@@ -224,6 +224,19 @@
                 
                 if (data.success) {
                     allOrders = data.data || [];
+                    // Normalize time fields - handle both "OrderTime" & "Ordertime"
+                    allOrders = allOrders.map(order => {
+                        // If Ordertime exists but OrderTime doesn't, copy it
+                        if (order.Ordertime && !order.OrderTime) {
+                            order.OrderTime = order.Ordertime;
+                        }
+                        // Also make sure we have both uppercase and lowercase versions
+                        if (order.OrderTime && !order.Ordertime) {
+                            order.Ordertime = order.OrderTime;
+                        }
+                        return order;
+                    });
+                    
                     currentFilteredOrders = [...allOrders];
                     renderOrdersTable();
                     updateOrdersCount();
@@ -297,8 +310,8 @@
             
             // Sort orders by date (newest first)
             const sortedOrders = [...currentFilteredOrders].sort((a, b) => {
-                const dateA = new Date(`${a.OrderDate} ${a.OrderTime || ''}`);
-                const dateB = new Date(`${b.OrderDate} ${b.OrderTime || ''}`);
+                const dateA = new Date(`${a.OrderDate} ${a.OrderTime || a.Ordertime || ''}`);
+                const dateB = new Date(`${b.OrderDate} ${b.OrderTime || b.Ordertime || ''}`);
                 return dateB - dateA;
             });
             
@@ -312,7 +325,24 @@
                     year: 'numeric'
                 });
                 
-                const time = order.OrderTime || 'N/A';
+                const time = order.OrderTime || order.Ordertime || 'N/A';
+                
+                // Format the time to HH:MM:SS if it exists
+                let formattedTime = time;
+                if (time !== 'N/A') {
+                    // Try to parse and format the time
+                    try {
+                        const timeParts = time.split(':');
+                        if (timeParts.length >= 2) {
+                            formattedTime = `${timeParts[0]}:${timeParts[1]}`;
+                            if (timeParts.length === 3) {
+                                formattedTime += `:${timeParts[2]}`;
+                            }
+                        }
+                    } catch (e) {
+                        console.log('Error formatting time:', e);
+                    }
+                }
                 
                 // Format items list
                 let itemsList = '';
@@ -346,7 +376,7 @@
                         </td>
                         <td>
                             <div>${formattedDate}</div>
-                            <small class="text-muted">${time}</small>
+                            <small class="text-muted">${formattedTime}</small>
                         </td>
                         <td>
                             <strong>${order.CustomerName || 'N/A'}</strong>
@@ -425,6 +455,24 @@
                 month: 'long',
                 day: 'numeric'
             });
+            // Get time from either OrderTime or Ordertime field
+            const time = order.OrderTime || order.Ordertime || 'N/A';
+            
+            // Format the time properly
+            let formattedTime = time;
+            if (time !== 'N/A') {
+                try {
+                    const timeParts = time.split(':');
+                    if (timeParts.length >= 2) {
+                        formattedTime = `${timeParts[0].padStart(2, '0')}:${timeParts[1].padStart(2, '0')}`;
+                        if (timeParts.length === 3) {
+                            formattedTime += `:${timeParts[2].padStart(2, '0')}`;
+                        }
+                    }
+                } catch (e) {
+                    console.log('Error formatting time:', e);
+                }
+            }
             
             // Calculate item totals
             const itemsHTML = order.items && order.items.length > 0 ? order.items.map(item => {
@@ -458,7 +506,7 @@
                         <div class="mb-3">
                             <strong>Order ID:</strong> ${order.OrderID}<br>
                             <strong>Date:</strong> ${formattedDate}<br>
-                            <strong>Time:</strong> ${order.OrderTime || 'N/A'}<br>
+                            <strong>Time:</strong> ${formattedTime}<br>
                             <strong>Source:</strong> ${order.OrderSource || 'Website'}<br>
                             <strong>Status:</strong> <span class="badge ${statusClass}">${statusText}</span>
                         </div>
