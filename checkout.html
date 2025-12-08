@@ -142,19 +142,19 @@
                                 <div id="deliveryTimeOptions">
                                     <div class="row g-2">
                                         <div class="col-6 col-md-4">
-                                            <div class="time-slot" data-time="Morning (9 AM - 12 PM)" onclick="selectTimeSlot(this)">
+                                            <div class="time-slot" data-time="Morning (5 AM - 8 AM)" onclick="selectTimeSlot(this)">
                                                 <i class="fas fa-sun me-1"></i> Morning<br>
-                                                <small>9 AM - 12 PM</small>
+                                                <small>5 AM - 8 PM</small>
                                             </div>
                                         </div>
                                         <div class="col-6 col-md-4">
-                                            <div class="time-slot" data-time="Afternoon (12 PM - 4 PM)" onclick="selectTimeSlot(this)">
+                                            <div class="time-slot" data-time="Daytime (9 AM - 5 PM)" onclick="selectTimeSlot(this)">
                                                 <i class="fas fa-sun me-1"></i> Afternoon<br>
-                                                <small>12 PM - 4 PM</small>
+                                                <small>9 AM - 5 PM</small>
                                             </div>
                                         </div>
                                         <div class="col-6 col-md-4">
-                                            <div class="time-slot" data-time="Evening (4 PM - 8 PM)" onclick="selectTimeSlot(this)">
+                                            <div class="time-slot" data-time="Evening (6 PM - 12 AM)" onclick="selectTimeSlot(this)">
                                                 <i class="fas fa-moon me-1"></i> Evening<br>
                                                 <small>4 PM - 8 PM</small>
                                             </div>
@@ -417,7 +417,7 @@
 
         // Select default time slot
         function selectDefaultTimeSlot() {
-            const morningSlot = document.querySelector('.time-slot[data-time="Morning (9 AM - 12 PM)"]');
+            const morningSlot = document.querySelector('.time-slot[data-time="Morning (5 AM - 8 AM)"]');
             if (morningSlot) {
                 selectTimeSlot(morningSlot);
             }

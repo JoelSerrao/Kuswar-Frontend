@@ -104,6 +104,7 @@
                                 <select class="form-control" id="deliveryStatusFilter">
                                     <option value="">All Deliveries</option>
                                     <option value="Pending">Pending</option>
+                                    <option value="Ready">Pending</option>
                                     <option value="In Transit">In Transit</option>
                                     <option value="Delivered">Delivered</option>
                                     <option value="Cancelled">Cancelled</option>
@@ -133,6 +134,9 @@
                                     </button>
                                     <button class="btn btn-sm btn-outline-warning filter-btn" onclick="setFilter('payment', 'Unpaid')">
                                         <i class="fas fa-exclamation-circle"></i> Unpaid Orders
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-primary filter-btn" onclick="setFilter('delivery', 'Ready')">
+                                        <i class="fas fa-check"></i> Ready Orders
                                     </button>
                                     <button class="btn btn-sm btn-outline-info filter-btn" onclick="setFilter('delivery', 'Delivered')">
                                         <i class="fas fa-truck"></i> Delivered
@@ -230,10 +234,10 @@
         const CONFIG = {
             API_BASE_URL: "https://kuswar-backend.onrender.com"
         };
-
+    
         let allOrders = [];
         let currentFilteredOrders = [];
-
+    
         // Initialize when page loads
         document.addEventListener('DOMContentLoaded', function() {
             loadOrders();
@@ -243,7 +247,7 @@
             const today = new Date().toISOString().split('T')[0];
             document.getElementById('dateFilter').value = today;
         });
-
+    
         // Setup event listeners
         function setupEventListeners() {
             // Real-time search as you type
@@ -263,7 +267,7 @@
                 }
             });
         }
-
+    
         // Set quick filter
         function setFilter(type, value) {
             if (type === 'payment') {
@@ -279,7 +283,7 @@
             });
             event.target.classList.add('active');
         }
-
+    
         // Clear all filters
         function clearFilters() {
             document.getElementById('searchOrders').value = '';
@@ -294,7 +298,7 @@
             
             filterOrders();
         }
-
+    
         // Load orders from API
         async function loadOrders() {
             try {
@@ -351,7 +355,7 @@
                 showLoading(false);
             }
         }
-
+    
         // Filter orders based on current filters
         function filterOrders() {
             const searchTerm = document.getElementById('searchOrders').value.toLowerCase();
@@ -400,7 +404,7 @@
             renderOrdersTable();
             updateOrdersCount();
         }
-
+    
         // Render orders table
         function renderOrdersTable() {
             const ordersTable = document.getElementById('ordersTable');
@@ -480,7 +484,7 @@
                     paymentStatusClass = 'bg-info';
                 }
                 
-                // Delivery status badge styling
+                // Delivery status badge styling - UPDATED with "Ready"
                 const deliveryStatus = order.DeliveryStatus || 'Pending';
                 let deliveryStatusClass = 'bg-warning text-dark';
                 if (deliveryStatus === 'Delivered') {
@@ -489,6 +493,8 @@
                     deliveryStatusClass = 'bg-danger';
                 } else if (deliveryStatus === 'In Transit') {
                     deliveryStatusClass = 'bg-info';
+                } else if (deliveryStatus === 'Ready') {
+                    deliveryStatusClass = 'bg-primary';
                 }
                 
                 tableHTML += `
@@ -504,6 +510,7 @@
                             <strong>${order.CustomerName || 'N/A'}</strong>
                             <div class="small text-muted">${order.Phone || 'N/A'}</div>
                             <div class="small">${order.CustomerCity || ''} - ${order.CustomerArea || ''}</div>
+                            ${order.CustomerAddress ? `<div class="small text-muted"><i class="fas fa-map-marker-alt"></i> ${order.CustomerAddress}</div>` : ''}
                         </td>
                         <td>${itemsList}</td>
                         <td class="text-end">
@@ -538,7 +545,7 @@
             
             ordersTable.innerHTML = tableHTML;
         }
-
+    
         // Update orders count
         function updateOrdersCount() {
             const ordersCount = document.getElementById('ordersCount');
@@ -552,7 +559,7 @@
                 }
             }
         }
-
+    
         // View order details
         async function viewOrderDetails(orderId) {
             try {
@@ -570,8 +577,8 @@
                 showNotification(`Error: ${error.message}`, 'danger');
             }
         }
-
-        // Show order details in modal
+    
+        // Show order details in modal - UPDATED VERSION
         function showOrderDetailsModal(order) {
             // Format order date
             const orderDate = new Date(order.OrderDate);
@@ -608,7 +615,7 @@
             window.currentOrderId = order.OrderID;
             window.currentOrder = order;
             
-            // Build modal content
+            // Build modal content - UPDATED with Address and Notes
             const modalContent = `
                 <div class="row">
                     <div class="col-md-6">
@@ -628,7 +635,8 @@
                             <strong>Name:</strong> ${order.CustomerName || 'N/A'}<br>
                             <strong>Phone:</strong> ${order.Phone || 'N/A'}<br>
                             <strong>City:</strong> ${order.CustomerCity || ''}<br>
-                            <strong>Area:</strong> ${order.CustomerArea || ''}
+                            <strong>Area:</strong> ${order.CustomerArea || ''}<br>
+                            <strong>Address:</strong> ${order.CustomerAddress || 'Not provided'}
                         </div>
                     </div>
                 </div>
@@ -637,6 +645,32 @@
                 ${order.PaidTo ? `
                     <div class="alert alert-success" id="paidToDisplay">
                         <strong>Payment Received By:</strong> ${order.PaidTo}
+                    </div>
+                ` : ''}
+                
+                <!-- Show Delivery Date and Time -->
+                ${order.DeliveryDate ? `
+                    <div class="alert alert-info">
+                        <div class="row">
+                            ${order.DeliveryDate ? `
+                                <div class="col-md-6">
+                                    <strong>Delivery Date:</strong> ${order.DeliveryDate}
+                                </div>
+                            ` : ''}
+                            ${order.DeliveryTime ? `
+                                <div class="col-md-6">
+                                    <strong>Preferred Time:</strong> ${order.DeliveryTime}
+                                </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                ` : ''}
+                
+                <!-- Show Special Instructions/Notes -->
+                ${order.notes ? `
+                    <div class="alert alert-warning">
+                        <h6><i class="fas fa-sticky-note"></i> Special Instructions</h6>
+                        <p class="mb-0">${order.notes}</p>
                     </div>
                 ` : ''}
                 
@@ -672,7 +706,7 @@
                         </div>
                     </div>
                     
-                    <!-- Delivery Status Card -->
+                    <!-- Delivery Status Card - UPDATED with "Ready" -->
                     <div class="col-md-6">
                         <div class="card border-primary h-100">
                             <div class="card-header bg-primary text-white py-2">
@@ -680,7 +714,7 @@
                             </div>
                             <div class="card-body">
                                 <div class="text-center mb-3">
-                                    <span id="deliveryStatusBadge" class="badge ${deliveryStatus === 'Delivered' ? 'bg-success' : deliveryStatus === 'Pending' ? 'bg-warning text-dark' : deliveryStatus === 'In Transit' ? 'bg-info' : 'bg-danger'} fs-6 p-2">
+                                    <span id="deliveryStatusBadge" class="badge ${deliveryStatus === 'Delivered' ? 'bg-success' : deliveryStatus === 'Pending' ? 'bg-warning text-dark' : deliveryStatus === 'In Transit' ? 'bg-info' : deliveryStatus === 'Ready' ? 'bg-primary' : 'bg-danger'} fs-6 p-2">
                                         ${deliveryStatus}
                                     </span>
                                 </div>
@@ -688,6 +722,10 @@
                                     <button type="button" class="btn btn-outline-warning ${deliveryStatus === 'Pending' ? 'active' : ''}" 
                                             onclick="updateDeliveryStatus('Pending')">
                                         <i class="fas fa-clock"></i> Pending
+                                    </button>
+                                    <button type="button" class="btn btn-outline-primary ${deliveryStatus === 'Ready' ? 'active' : ''}" 
+                                            onclick="updateDeliveryStatus('Ready')">
+                                        <i class="fas fa-check"></i> Ready
                                     </button>
                                     <button type="button" class="btn btn-outline-info ${deliveryStatus === 'In Transit' ? 'active' : ''}" 
                                             onclick="updateDeliveryStatus('In Transit')">
@@ -707,7 +745,6 @@
                     </div>
                 </div>
                 
-                <!-- Rest of the modal content remains the same -->
                 <hr>
                 
                 <h6 class="text-muted">ORDER ITEMS</h6>
@@ -742,34 +779,16 @@
                         </tfoot>
                     </table>
                 </div>
-                
-                ${order.notes ? `
-                    <div class="alert alert-light mt-3">
-                        <strong>Notes:</strong> ${order.notes}
-                    </div>
-                ` : ''}
-                
-                ${order.DeliveryDate ? `
-                    <div class="alert alert-info mt-3">
-                        <strong>Delivery Date:</strong> ${order.DeliveryDate}
-                    </div>
-                ` : ''}
-                
-                ${order.PaidTo ? `
-                    <div class="alert alert-success mt-3">
-                        <strong>Payment Received By:</strong> ${order.PaidTo}
-                    </div>
-                ` : ''}
             `;
-            
+                        
             document.getElementById('orderDetailsModalLabel').textContent = `Order #${order.OrderID}`;
             document.getElementById('orderDetailsContent').innerHTML = modalContent;
-            
+                        
             // Show modal
             const modal = new bootstrap.Modal(document.getElementById('orderDetailsModal'));
             modal.show();
         }
-
+    
         // Update payment status
         async function updatePaymentStatus(newStatus) {
             try {
@@ -866,7 +885,7 @@
                 showNotification(`Error: ${error.message}`, 'danger');
             }
         }
-
+    
         // Helper to call payment status API
         async function callPaymentStatusAPI(newStatus, paidTo) {
             try {
@@ -945,8 +964,8 @@
                 showNotification(`Error: ${error.message}`, 'danger');
             }
         }
-
-        // Update delivery status
+    
+        // Update delivery status - UPDATED for "Ready" status
         async function updateDeliveryStatus(newStatus) {
             try {
                 if (!window.currentOrderId) {
@@ -976,6 +995,8 @@
                         badgeClass = 'bg-danger';
                     } else if (newStatus === 'In Transit') {
                         badgeClass = 'bg-info';
+                    } else if (newStatus === 'Ready') {
+                        badgeClass = 'bg-primary';
                     }
                     
                     document.getElementById('deliveryStatusBadge').className = `badge ${badgeClass} fs-6 p-2`;
@@ -1004,7 +1025,7 @@
                 showNotification(`Error: ${error.message}`, 'danger');
             }
         }
-
+    
         // Print order details
         function printOrderDetails() {
             const printContent = document.getElementById('orderDetailsContent').innerHTML;
@@ -1012,7 +1033,7 @@
             
             document.body.innerHTML = `
                 <div class="container mt-4">
-                    <h2>Order Invoice - Kuswar Gifts</h2>
+                    <h2>Order Invoice - Traditionalzz Kuswar</h2>
                     <hr>
                     ${printContent}
                 </div>
@@ -1025,7 +1046,7 @@
             const modal = new bootstrap.Modal(document.getElementById('orderDetailsModal'));
             modal.show();
         }
-
+    
         // Export orders to CSV
         function exportOrders() {
             if (currentFilteredOrders.length === 0) {
@@ -1034,7 +1055,7 @@
             }
             
             // Create CSV content
-            let csv = 'Order ID,Date,Time,Customer Name,Phone,City,Area,Items Count,Total Amount,Payment Status,Delivery Status\n';
+            let csv = 'Order ID,Date,Time,Customer Name,Phone,City,Area,Address,Items Count,Total Amount,Payment Status,Delivery Status,Notes\n';
             
             currentFilteredOrders.forEach(order => {
                 const time = order.OrderTime || order.Ordertime || '';
@@ -1042,7 +1063,8 @@
                 
                 csv += `"${order.OrderID || ''}","${order.OrderDate || ''}","${time}","${order.CustomerName || ''}",`;
                 csv += `"${order.Phone || ''}","${order.CustomerCity || ''}","${order.CustomerArea || ''}",`;
-                csv += `"${itemsCount}","${order.TotalAmount || 0}","${order.PaymentStatus || ''}","${order.DeliveryStatus || 'Pending'}"\n`;
+                csv += `"${order.CustomerAddress || ''}","${itemsCount}","${order.TotalAmount || 0}",`;
+                csv += `"${order.PaymentStatus || ''}","${order.DeliveryStatus || 'Pending'}","${order.notes || ''}"\n`;
             });
             
             // Create download link
@@ -1058,7 +1080,7 @@
             
             showNotification(`Exported ${currentFilteredOrders.length} orders`, 'success');
         }
-
+    
         // Show loading state
         function showLoading(isLoading) {
             const ordersTable = document.getElementById('ordersTable');
@@ -1075,7 +1097,7 @@
                 `;
             }
         }
-
+    
         // Show notification
         function showNotification(message, type = 'info') {
             // Create toast element
@@ -1094,7 +1116,7 @@
                         ${message}
                     </div>
                     <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
-                </div>
+                    </div>
             `;
             
             toastContainer.appendChild(toast);
@@ -1110,7 +1132,7 @@
                 toastContainer.remove();
             });
         }
-
+    
         // Make functions available globally
         window.loadOrders = loadOrders;
         window.filterOrders = filterOrders;
