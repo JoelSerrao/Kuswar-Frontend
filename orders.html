@@ -9,6 +9,8 @@
     <style>
         body { padding-top: 76px; background-color: #f5f7fb; }
         .order-row:hover { background-color: rgba(67, 97, 238, 0.05); cursor: pointer; }
+        .status-badge { min-width: 100px; }
+        .modal-lg { max-width: 800px; }
     </style>
 </head>
 <body>
@@ -85,7 +87,7 @@
                             </div>
                             <div class="col-md-2">
                                 <button class="btn btn-primary w-100" onclick="loadOrders()">
-                                    <i class="fas fa-filter"></i> Filter
+                                    <i class="fas fa-sync-alt"></i> Refresh
                                 </button>
                             </div>
                         </div>
@@ -124,7 +126,40 @@
                                 </tbody>
                             </table>
                         </div>
+                        <div class="card-footer bg-white border-top-0">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <small class="text-muted" id="ordersCount">Loading...</small>
+                                <div>
+                                    <button class="btn btn-sm btn-outline-secondary" onclick="loadOrders()">
+                                        <i class="fas fa-redo"></i> Refresh
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Order Details Modal -->
+    <div class="modal fade" id="orderDetailsModal" tabindex="-1" aria-labelledby="orderDetailsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title" id="orderDetailsModalLabel">
+                        <i class="fas fa-receipt"></i> Order Details
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="orderDetailsContent">
+                    Loading order details...
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" onclick="printOrderDetails()">
+                        <i class="fas fa-print"></i> Print
+                    </button>
                 </div>
             </div>
         </div>
@@ -132,63 +167,144 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Sample orders data
-        const sampleOrders = [
-            {
-                OrderID: 'ORD001',
-                OrderDate: '2024-01-15',
-                Ordertime: '14:30:00',
-                CustomerName: 'John Doe',
-                Phone: '9876543210',
-                CustomerCity: 'Mumbai',
-                CustomerArea: 'Andheri',
-                items: [
-                    { ProductName: 'Family Pack', Quantity: 1 },
-                    { ProductName: 'Chocolate Box', Quantity: 2 }
-                ],
-                TotalAmount: 3197,
-                PaymentStatus: 'Paid'
-            },
-            {
-                OrderID: 'ORD002',
-                OrderDate: '2024-01-14',
-                Ordertime: '11:15:00',
-                CustomerName: 'Jane Smith',
-                Phone: '9876543211',
-                CustomerCity: 'Delhi',
-                CustomerArea: 'Connaught Place',
-                items: [
-                    { ProductName: 'Festival Hamper', Quantity: 1 }
-                ],
-                TotalAmount: 1499,
-                PaymentStatus: 'Unpaid'
-            }
-        ];
+        // Configuration
+        const CONFIG = {
+            API_BASE_URL: "https://kuswar-backend.onrender.com"
+        };
 
-        // Initialize
+        let allOrders = [];
+        let currentFilteredOrders = [];
+
+        // Initialize when page loads
         document.addEventListener('DOMContentLoaded', function() {
-            renderOrdersTable(sampleOrders);
+            loadOrders();
+            setupEventListeners();
         });
 
+        // Setup event listeners
+        function setupEventListeners() {
+            // Search as you type
+            document.getElementById('searchOrders').addEventListener('input', filterOrders);
+            
+            // Filter on status change
+            document.getElementById('statusFilter').addEventListener('change', filterOrders);
+            
+            // Filter on date change
+            document.getElementById('dateFilter').addEventListener('change', filterOrders);
+            
+            // Set today's date as default in date filter
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('dateFilter').value = today;
+        }
+
+        // Load orders from API
+        async function loadOrders() {
+            try {
+                showLoading(true);
+                
+                // Get filter values
+                const statusFilter = document.getElementById('statusFilter').value;
+                const dateFilter = document.getElementById('dateFilter').value;
+                
+                // Build query parameters
+                let params = new URLSearchParams();
+                
+                if (statusFilter) {
+                    params.append('payment_status', statusFilter);
+                }
+                
+                if (dateFilter) {
+                    params.append('from_date', dateFilter);
+                    params.append('to_date', dateFilter);
+                }
+                
+                // Fetch orders from API
+                const response = await fetch(`${CONFIG.API_BASE_URL}/api/orders?${params.toString()}`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    allOrders = data.data || [];
+                    currentFilteredOrders = [...allOrders];
+                    renderOrdersTable();
+                    updateOrdersCount();
+                    showNotification(`Loaded ${allOrders.length} orders`, 'success');
+                } else {
+                    throw new Error(data.error || 'Failed to load orders');
+                }
+                
+            } catch (error) {
+                console.error('Error loading orders:', error);
+                showNotification(`Error: ${error.message}`, 'danger');
+                renderOrdersTable(); // This will show error state
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // Filter orders based on current filters
+        function filterOrders() {
+            const searchTerm = document.getElementById('searchOrders').value.toLowerCase();
+            const statusFilter = document.getElementById('statusFilter').value;
+            const dateFilter = document.getElementById('dateFilter').value;
+            
+            currentFilteredOrders = allOrders.filter(order => {
+                // Search filter
+                if (searchTerm) {
+                    const matchesSearch = 
+                        (order.OrderID && order.OrderID.toLowerCase().includes(searchTerm)) ||
+                        (order.CustomerName && order.CustomerName.toLowerCase().includes(searchTerm)) ||
+                        (order.Phone && order.Phone.toLowerCase().includes(searchTerm));
+                    
+                    if (!matchesSearch) return false;
+                }
+                
+                // Status filter (already handled by API, but we apply again for search compatibility)
+                if (statusFilter && order.PaymentStatus !== statusFilter) {
+                    return false;
+                }
+                
+                // Date filter (already handled by API)
+                if (dateFilter && order.OrderDate !== dateFilter) {
+                    return false;
+                }
+                
+                return true;
+            });
+            
+            renderOrdersTable();
+            updateOrdersCount();
+        }
+
         // Render orders table
-        function renderOrdersTable(orders) {
+        function renderOrdersTable() {
             const ordersTable = document.getElementById('ordersTable');
             
-            if (!orders || orders.length === 0) {
+            if (!currentFilteredOrders || currentFilteredOrders.length === 0) {
                 ordersTable.innerHTML = `
                     <tr>
                         <td colspan="7" class="text-center py-5">
                             <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
                             <h5 class="text-muted">No orders found</h5>
+                            <p class="text-muted small">Try changing your filters or check back later</p>
+                            <button class="btn btn-sm btn-outline-primary" onclick="loadOrders()">
+                                <i class="fas fa-redo"></i> Refresh
+                            </button>
                         </td>
                     </tr>
                 `;
                 return;
             }
             
+            // Sort orders by date (newest first)
+            const sortedOrders = [...currentFilteredOrders].sort((a, b) => {
+                const dateA = new Date(`${a.OrderDate} ${a.OrderTime || ''}`);
+                const dateB = new Date(`${b.OrderDate} ${b.OrderTime || ''}`);
+                return dateB - dateA;
+            });
+            
             let tableHTML = '';
             
-            orders.forEach(order => {
+            sortedOrders.forEach(order => {
                 const orderDate = new Date(order.OrderDate);
                 const formattedDate = orderDate.toLocaleDateString('en-IN', {
                     day: '2-digit',
@@ -196,40 +312,60 @@
                     year: 'numeric'
                 });
                 
-                const itemsList = order.items ? order.items.map(item => 
-                    `<div class="small">${item.ProductName} × ${item.Quantity}</div>`
-                ).join('') : '';
+                const time = order.OrderTime || 'N/A';
                 
-                const statusClass = order.PaymentStatus === 'Paid' ? 'bg-success' : 
-                                  order.PaymentStatus === 'Unpaid' ? 'bg-warning text-dark' : 'bg-info';
+                // Format items list
+                let itemsList = '';
+                if (order.items && order.items.length > 0) {
+                    const displayedItems = order.items.slice(0, 2);
+                    itemsList = displayedItems.map(item => 
+                        `<div class="small">${item.ProductName || 'Product'} × ${item.Quantity || 1}</div>`
+                    ).join('');
+                    
+                    if (order.items.length > 2) {
+                        itemsList += `<div class="small text-primary">+${order.items.length - 2} more items</div>`;
+                    }
+                } else {
+                    itemsList = '<div class="small text-muted">No items</div>';
+                }
+                
+                // Status badge styling
+                let statusClass = 'bg-secondary';
+                if (order.PaymentStatus === 'Paid') {
+                    statusClass = 'bg-success';
+                } else if (order.PaymentStatus === 'Unpaid') {
+                    statusClass = 'bg-warning text-dark';
+                } else if (order.PaymentStatus === 'Cash on Delivery') {
+                    statusClass = 'bg-info';
+                }
                 
                 tableHTML += `
-                    <tr class="order-row">
+                    <tr class="order-row" onclick="viewOrderDetails('${order.OrderID}')">
                         <td>
                             <span class="badge bg-primary">#${order.OrderID}</span>
                         </td>
                         <td>
                             <div>${formattedDate}</div>
-                            <small class="text-muted">${order.Ordertime}</small>
+                            <small class="text-muted">${time}</small>
                         </td>
                         <td>
-                            <strong>${order.CustomerName}</strong>
-                            <div class="small text-muted">${order.Phone}</div>
-                            <div class="small">${order.CustomerCity} - ${order.CustomerArea}</div>
+                            <strong>${order.CustomerName || 'N/A'}</strong>
+                            <div class="small text-muted">${order.Phone || 'N/A'}</div>
+                            <div class="small">${order.CustomerCity || ''} - ${order.CustomerArea || ''}</div>
                         </td>
                         <td>${itemsList}</td>
                         <td class="text-end">
-                            <strong class="text-success">₹${order.TotalAmount.toFixed(2)}</strong>
+                            <strong class="text-success">₹${(order.TotalAmount || 0).toFixed(2)}</strong>
                         </td>
                         <td>
-                            <span class="badge ${statusClass}">
-                                ${order.PaymentStatus}
+                            <span class="badge ${statusClass} status-badge d-inline-block text-center">
+                                ${order.PaymentStatus || 'Unknown'}
                             </span>
                         </td>
                         <td class="text-center">
                             <button class="btn btn-sm btn-outline-primary" 
-                                    onclick="viewOrderDetails('${order.OrderID}')">
-                                <i class="fas fa-eye"></i>
+                                    onclick="event.stopPropagation(); viewOrderDetails('${order.OrderID}')">
+                                <i class="fas fa-eye"></i> View
                             </button>
                         </td>
                     </tr>
@@ -239,34 +375,235 @@
             ordersTable.innerHTML = tableHTML;
         }
 
-        // Filter orders
-        function loadOrders() {
-            const searchTerm = document.getElementById('searchOrders').value.toLowerCase();
-            const statusFilter = document.getElementById('statusFilter').value;
-            
-            const filtered = sampleOrders.filter(order => {
-                const matchesSearch = 
-                    order.OrderID.toLowerCase().includes(searchTerm) ||
-                    order.CustomerName.toLowerCase().includes(searchTerm) ||
-                    order.Phone.includes(searchTerm);
-                
-                const matchesStatus = !statusFilter || order.PaymentStatus === statusFilter;
-                
-                return matchesSearch && matchesStatus;
-            });
-            
-            renderOrdersTable(filtered);
+        // Update orders count
+        function updateOrdersCount() {
+            const ordersCount = document.getElementById('ordersCount');
+            if (ordersCount) {
+                ordersCount.textContent = `Showing ${currentFilteredOrders.length} of ${allOrders.length} orders`;
+            }
         }
 
         // View order details
-        function viewOrderDetails(orderId) {
-            alert(`Viewing order ${orderId} - Details would open here`);
+        async function viewOrderDetails(orderId) {
+            try {
+                // Find the order in filtered orders
+                const order = currentFilteredOrders.find(o => o.OrderID === orderId);
+                
+                if (!order) {
+                    // Try to fetch single order from API
+                    const response = await fetch(`${CONFIG.API_BASE_URL}/api/orders?phone=&payment_status=&from_date=&to_date=`);
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        const allOrders = data.data || [];
+                        const foundOrder = allOrders.find(o => o.OrderID === orderId);
+                        if (foundOrder) {
+                            showOrderDetailsModal(foundOrder);
+                        } else {
+                            throw new Error('Order not found');
+                        }
+                    } else {
+                        throw new Error(data.error || 'Failed to load order');
+                    }
+                } else {
+                    showOrderDetailsModal(order);
+                }
+                
+            } catch (error) {
+                console.error('Error loading order details:', error);
+                showNotification(`Error: ${error.message}`, 'danger');
+            }
         }
 
-        // Initialize filters
-        document.getElementById('searchOrders').addEventListener('input', loadOrders);
-        document.getElementById('statusFilter').addEventListener('change', loadOrders);
-        document.getElementById('dateFilter').addEventListener('change', loadOrders);
+        // Show order details in modal
+        function showOrderDetailsModal(order) {
+            // Format order date
+            const orderDate = new Date(order.OrderDate);
+            const formattedDate = orderDate.toLocaleDateString('en-IN', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+            
+            // Calculate item totals
+            const itemsHTML = order.items && order.items.length > 0 ? order.items.map(item => {
+                const itemTotal = (item.Quantity || 1) * (item.UnitPrice || 0);
+                return `
+                    <tr>
+                        <td>${item.ProductName || 'Product'}</td>
+                        <td class="text-center">${item.Quantity || 1}</td>
+                        <td class="text-end">₹${(item.UnitPrice || 0).toFixed(2)}</td>
+                        <td class="text-end">₹${itemTotal.toFixed(2)}</td>
+                    </tr>
+                `;
+            }).join('') : '<tr><td colspan="4" class="text-center">No items</td></tr>';
+            
+            // Status badge
+            let statusClass = 'bg-secondary';
+            let statusText = order.PaymentStatus || 'Unknown';
+            if (order.PaymentStatus === 'Paid') {
+                statusClass = 'bg-success';
+            } else if (order.PaymentStatus === 'Unpaid') {
+                statusClass = 'bg-warning text-dark';
+            } else if (order.PaymentStatus === 'Cash on Delivery') {
+                statusClass = 'bg-info';
+            }
+            
+            // Build modal content
+            const modalContent = `
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6 class="text-muted">ORDER INFORMATION</h6>
+                        <div class="mb-3">
+                            <strong>Order ID:</strong> ${order.OrderID}<br>
+                            <strong>Date:</strong> ${formattedDate}<br>
+                            <strong>Time:</strong> ${order.OrderTime || 'N/A'}<br>
+                            <strong>Source:</strong> ${order.OrderSource || 'Website'}<br>
+                            <strong>Status:</strong> <span class="badge ${statusClass}">${statusText}</span>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="text-muted">CUSTOMER INFORMATION</h6>
+                        <div class="mb-3">
+                            <strong>Name:</strong> ${order.CustomerName || 'N/A'}<br>
+                            <strong>Phone:</strong> ${order.Phone || 'N/A'}<br>
+                            <strong>Address:</strong> ${order.CustomerArea || ''}, ${order.CustomerCity || ''}<br>
+                            <strong>Customer ID:</strong> ${order.CustomerID || 'N/A'}
+                        </div>
+                    </div>
+                </div>
+                
+                <hr>
+                
+                <h6 class="text-muted">ORDER ITEMS</h6>
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Product</th>
+                                <th class="text-center">Qty</th>
+                                <th class="text-end">Price</th>
+                                <th class="text-end">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${itemsHTML}
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <td colspan="3" class="text-end"><strong>Total Amount:</strong></td>
+                                <td class="text-end"><strong class="text-success">₹${(order.TotalAmount || 0).toFixed(2)}</strong></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+                
+                ${order.notes ? `
+                    <div class="alert alert-light mt-3">
+                        <strong>Notes:</strong> ${order.notes}
+                    </div>
+                ` : ''}
+                
+                ${order.DeliveryDate ? `
+                    <div class="alert alert-info mt-3">
+                        <strong>Delivery Date:</strong> ${order.DeliveryDate}
+                    </div>
+                ` : ''}
+                
+                ${order.PaidTo ? `
+                    <div class="alert alert-success mt-3">
+                        <strong>Payment Received By:</strong> ${order.PaidTo}
+                    </div>
+                ` : ''}
+            `;
+            
+            document.getElementById('orderDetailsModalLabel').textContent = `Order #${order.OrderID}`;
+            document.getElementById('orderDetailsContent').innerHTML = modalContent;
+            
+            // Show modal
+            const modal = new bootstrap.Modal(document.getElementById('orderDetailsModal'));
+            modal.show();
+        }
+
+        // Print order details
+        function printOrderDetails() {
+            const printContent = document.getElementById('orderDetailsContent').innerHTML;
+            const originalContent = document.body.innerHTML;
+            
+            document.body.innerHTML = `
+                <div class="container mt-4">
+                    <h2>Order Invoice</h2>
+                    <hr>
+                    ${printContent}
+                </div>
+            `;
+            
+            window.print();
+            document.body.innerHTML = originalContent;
+            
+            // Re-initialize modal
+            const modal = new bootstrap.Modal(document.getElementById('orderDetailsModal'));
+            modal.show();
+        }
+
+        // Show loading state
+        function showLoading(isLoading) {
+            const ordersTable = document.getElementById('ordersTable');
+            if (isLoading) {
+                ordersTable.innerHTML = `
+                    <tr>
+                        <td colspan="7" class="text-center py-5">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <p class="mt-2">Loading orders...</p>
+                        </td>
+                    </tr>
+                `;
+            }
+        }
+
+        // Show notification
+        function showNotification(message, type = 'info') {
+            // Create toast element
+            const toastContainer = document.createElement('div');
+            toastContainer.className = 'toast-container position-fixed top-0 end-0 p-3';
+            
+            const toastId = 'toast-' + Date.now();
+            const toast = document.createElement('div');
+            toast.className = `toast align-items-center text-white bg-${type} border-0`;
+            toast.id = toastId;
+            
+            toast.innerHTML = `
+                <div class="d-flex">
+                    <div class="toast-body">
+                        <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'danger' ? 'exclamation-circle' : 'info-circle'} me-2"></i>
+                        ${message}
+                    </div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+                </div>
+            `;
+            
+            toastContainer.appendChild(toast);
+            document.body.appendChild(toastContainer);
+            
+            const bsToast = new bootstrap.Toast(toast, {
+                autohide: true,
+                delay: 3000
+            });
+            bsToast.show();
+            
+            toast.addEventListener('hidden.bs.toast', function() {
+                toastContainer.remove();
+            });
+        }
+
+        // Make functions available globally
+        window.loadOrders = loadOrders;
+        window.filterOrders = filterOrders;
+        window.viewOrderDetails = viewOrderDetails;
+        window.printOrderDetails = printOrderDetails;
     </script>
 </body>
 </html>
