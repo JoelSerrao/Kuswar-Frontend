@@ -513,29 +513,34 @@
         }
         
         // Increment quantity by 1
-        function incrementQuantity(productId, productName, price, category) {
-            if (!cart[productId]) {
+        function incrementQuantity(productId) {
                 // Need to get product info from DOM
                 const input = document.querySelector(`input[data-product-id="${productId}"]`);
-                if (input) {
-                    const card = input.closest('.card');
-                    const name = productName || card.querySelector('.product-name span').textContent;
-                    const price = price || parseFloat(card.querySelector('.text-primary').textContent.replace('₹', ''));
-                    const category = category || card.closest('.accordion-item').querySelector('.accordion-button strong').textContent;
+                if (!input) return;
+                
+                const card = input.closest('.card');
+                const productName = card.querySelector('.product-name span').textContent;
+                const priceText = card.querySelector('.text-primary').textContent;
+                const price = parseFloat(priceText,replace('₹', ''));
+
+                // Get category from accordion
+                const accordionItem = card.closest('.accordion-item');
+                const category = accordionItem ? accordionItem.querySelector('.accordion-button strong').textContent: 'Unknown';
                     
+            if (!cart[productId]) {
+                    // Add new item to cart with quantity 1
                     cart[productId] = {
                         id: productId,
-                        name: name,
+                        name: productName,
                         price: price,
                         category: category,
                         quantity: 1.0
-                    };
-                    showNotification(`${name} added to cart`, 'success');
-                }
+                    };  
+                    showNotification(`${productName} added to cart`, 'success');
             } else {
                 // Increase by 1, but keep as decimal
                 cart[productId].quantity = parseFloat((cart[productId].quantity + 1).toFixed(2));
-                showNotification(`${cart[productId].name} quantity increased to ${cart[productId].quantity}`, 'success');
+                showNotification(`${productName} quantity increased to ${cart[productId].quantity}`, 'success');
             }
             
             saveCart();
