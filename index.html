@@ -372,7 +372,7 @@
                                 <!-- Middle: Quantity Controls -->
                                 <div class="quantity-controls d-flex align-items-center" style="width: 30%;">
                                     <button class="btn btn-outline-primary btn-sm px-2 me-1" type="button" 
-                                            onclick="decrementQuantity('${productId}')"
+                                            onclick="handleMinusButton('${productId}')"
                                             ${cartQuantity <= 0 ? 'disabled' : ''}
                                             style="min-width: 32px;">
                                         <i class="fas fa-minus"></i>
@@ -389,7 +389,7 @@
                                            style="width: 70px;">
                                     
                                     <button class="btn btn-outline-primary btn-sm px-2 ms-1" type="button" 
-                                            onclick="incrementQuantity('${productId}')"
+                                            onclick="handlePlusButton('${productId}')"
                                             ${stock === 0 ? 'disabled' : ''}
                                             style="min-width: 32px;">
                                         <i class="fas fa-plus"></i>
@@ -513,34 +513,29 @@
         }
         
         // Increment quantity by 1
-        function incrementQuantity(productId) {
+        function incrementQuantity(productId, productName, price, category) {
+            if (!cart[productId]) {
                 // Need to get product info from DOM
                 const input = document.querySelector(`input[data-product-id="${productId}"]`);
-                if (!input) return;
-                
-                const card = input.closest('.card');
-                const productName = card.querySelector('.product-name span').textContent;
-                const priceText = card.querySelector('.text-primary').textContent;
-                const price = parseFloat(priceText,replace('₹', ''));
-
-                // Get category from accordion
-                const accordionItem = card.closest('.accordion-item');
-                const category = accordionItem ? accordionItem.querySelector('.accordion-button strong').textContent: 'Unknown';
+                if (input) {
+                    const card = input.closest('.card');
+                    const name = productName || card.querySelector('.product-name span').textContent;
+                    const price = price || parseFloat(card.querySelector('.text-primary').textContent.replace('₹', ''));
+                    const category = category || card.closest('.accordion-item').querySelector('.accordion-button strong').textContent;
                     
-            if (!cart[productId]) {
-                    // Add new item to cart with quantity 1
                     cart[productId] = {
                         id: productId,
-                        name: productName,
+                        name: name,
                         price: price,
                         category: category,
                         quantity: 1.0
-                    };  
-                    showNotification(`${productName} added to cart`, 'success');
+                    };
+                    showNotification(`${name} added to cart`, 'success');
+                }
             } else {
                 // Increase by 1, but keep as decimal
                 cart[productId].quantity = parseFloat((cart[productId].quantity + 1).toFixed(2));
-                showNotification(`${productName} quantity increased to ${cart[productId].quantity}`, 'success');
+                showNotification(`${cart[productId].name} quantity increased to ${cart[productId].quantity}`, 'success');
             }
             
             saveCart();
@@ -587,6 +582,40 @@
                 saveCart();
                 updateProductDisplay(productId);
             }
+        }
+
+                // Simple add to cart for the [+] button
+        function handlePlusButton(productId) {
+            const input = document.querySelector(`input[data-product-id="${productId}"]`);
+            if (!input) return;
+            
+            const currentValue = parseFloat(input.value) || 0;
+            const newValue = parseFloat((currentValue + 1).toFixed(2));
+            
+            // Update the input
+            input.value = newValue;
+            
+            // Trigger the onchange event to update cart
+            input.dispatchEvent(new Event('change'));
+        }
+        
+        // Simple remove for the [-] button
+        function handleMinusButton(productId) {
+            const input = document.querySelector(`input[data-product-id="${productId}"]`);
+            if (!input) return;
+            
+            const currentValue = parseFloat(input.value) || 0;
+            const newValue = parseFloat((currentValue - 1).toFixed(2));
+            
+            if (newValue < 0) {
+                newValue = 0;
+            }
+            
+            // Update the input
+            input.value = newValue;
+            
+            // Trigger the onchange event to update cart
+            input.dispatchEvent(new Event('change'));
         }
 
         // Update product quantity
