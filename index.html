@@ -1117,14 +1117,24 @@
         // Clear cart
         function clearCart() {
             if (confirm('Are you sure you want to clear the entire cart including custom orders?')) {
+                // Clear data
                 cart = {};
                 customOrders = {};
                 saveCart();
                 saveCustomOrders();
+                
+                // Reset all product quantity inputs to 0
+                const quantityInputs = document.querySelectorAll('input[data-product-id]');
+                quantityInputs.forEach(input => {
+                    input.value = 0;
+                });
+                
+                // Update UI
                 updateCartCount();
                 loadCartItems();
                 updateCheckoutButton();
                 renderCustomOrders();
+                
                 showNotification('Cart cleared', 'info');
             }
         }
