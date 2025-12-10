@@ -33,8 +33,7 @@ function printBill() {
             minute: '2-digit'
         });
 
-      const currentUrl = window.location.origin;
-      const logoPath = currentUrl + '/assets/logo.png';
+      const logoPath = window.location.protocol + '//' + window.location.host + '/assets/logo.png';
         
         // --- Determine Payment Status Class ---
         let paymentClass = 'payment-unpaid';
