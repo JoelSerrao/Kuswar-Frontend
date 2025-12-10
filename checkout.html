@@ -394,7 +394,7 @@
             const deliveryDateInput = document.getElementById('deliveryDate');
             if (deliveryDateInput) {
                 const today = new Date().toISOString().split('T')[0];
-                deliveryDateInput.min = today;
+                deliveryDateInput.min = '';
                 
                 // Set default to tomorrow
                 const tomorrow = new Date();
