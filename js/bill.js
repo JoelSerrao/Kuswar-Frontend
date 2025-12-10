@@ -214,15 +214,14 @@ function printBill() {
         <div class="header">
             <img src="../assets/logo.png" alt="Traditionalzz Kuswar" class="logo" onerror="this.style.display='none';">
             <h1>Traditionalzz Kuswar</h1>
-            <div class="subtitle">Traditional Sweets & Gifts</div>
-            <h2 style="margin-top: 15px; color: #333; font-size: 20px;">TAX INVOICE</h2>
-        </div>
+            <div class="subtitle">Traditional Christmas Sweets & Gifts</div>
+            <h2 style="margin-top: 15px; color: #333; font-size: 20px;">ORDER INVOICE</h2>
         
         <div class="invoice-info">
             <div class="invoice-details">
                 <div class="section-title">Invoice Details</div>
                 <div class="info-row">
-                    <div class="info-label">Invoice #:</div>
+                    <div class="info-label">Order #:</div>
                     <div class="info-value"><strong>${order.OrderID}</strong></div>
                 </div>
                 <div class="info-row">
@@ -264,16 +263,8 @@ function printBill() {
             <div class="invoice-details">
                 <div class="section-title">Order Details</div>
                 <div class="info-row">
-                    <div class="info-label">Order Source:</div>
-                    <div class="info-value">${order.OrderSource || 'Website'}</div>
-                </div>
-                <div class="info-row">
                     <div class="info-label">Delivery Date:</div>
                     <div class="info-value">${order.DeliveryDate || formattedOrderDate}</div>
-                </div>
-                <div class="info-row">
-                    <div class="info-label">Delivery Time:</div>
-                    <div class="info-value">${order.DeliveryTime || 'Anytime'}</div>
                 </div>
             </div>
             
@@ -331,9 +322,10 @@ function printBill() {
         
         <div class="footer">
             <div style="margin-bottom: 10px;">Thank you for your business!</div>
-            <div>For any queries, please contact us</div>
+            <div>For any queries, please contact us at: +91 9591981354</div>
+            <div>Email: info@traditionalzzkuswar.com</div>
             <div style="margin-top: 15px; color: #4361ee; font-weight: 600;">
-                ❤️ Enjoy your Traditional Kuswar! ❤️
+                ❤️ Merry Christmas, Enjoy your Kuswar! ❤️
             </div>
             <div style="margin-top: 10px; font-size: 12px;">
                 This is a computer-generated invoice. No signature required.
