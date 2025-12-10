@@ -33,7 +33,7 @@ function printBill() {
             minute: '2-digit'
         });
 
-        const logoPath = 'https://joelserrao.github.io/Kuswar-Frontend/assets/logo.png';
+        const logoPath = '../assets/logo.png';
         
         // --- Determine Payment Status Class ---
         let paymentClass = 'payment-unpaid';
