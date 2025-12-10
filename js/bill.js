@@ -33,6 +33,7 @@ function printBill() {
             minute: '2-digit'
         });
 
+        const logoPath = 'https://joelserrao.github.io/Kuswar-Frontend/assets/logo.png';
         
         // --- Determine Payment Status Class ---
         let paymentClass = 'payment-unpaid';
@@ -414,7 +415,7 @@ function printBill() {
                 
                 <div class="invoice-header">
                     <div class="logo-section">
-                        <img src="/assets/logo.png" alt="Traditionalzz Kuswar Logo" class="logo" 
+                        <img src="${logoPath}" alt="Traditionalzz Kuswar Logo" class="logo" 
                             onerror="this.onerror=null; this.src='https://via.placeholder.com/200x60/4361ee/ffffff?text=Traditionalzz+Kuswar';">
                         <div class="business-name">Traditionalzz Kuswar</div>
                         <div class="business-tagline">Traditional Christmas Sweets & Gifts</div>
@@ -600,9 +601,7 @@ function printSimpleBill() {
     
     billText += `\nTotal: ₹${order.TotalAmount}\n`;
     billText += `Payment: ${order.PaymentStatus}\n`;
-    if (order.PaidTo) {
-        billText += `Paid to: ${order.PaidTo}\n`;
-    }
+
     billText += '\nThank you for your order!';
     
     const printWindow = window.open('', '_blank', 'width=600,height=400');
