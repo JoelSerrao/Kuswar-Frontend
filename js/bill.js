@@ -414,14 +414,14 @@ function printBill() {
                 
                 <div class="invoice-header">
                     <div class="logo-section">
-                        <img src="joelserrao.github.io/Kuswar-Frontend/assets/logo.png" alt="Traditionalzz Kuswar Logo" class="logo" 
+                        <img src="/assets/logo.png" alt="Traditionalzz Kuswar Logo" class="logo" 
                             onerror="this.onerror=null; this.src='https://via.placeholder.com/200x60/4361ee/ffffff?text=Traditionalzz+Kuswar';">
                         <div class="business-name">Traditionalzz Kuswar</div>
                         <div class="business-tagline">Traditional Christmas Sweets & Gifts</div>
                     </div>
                     
                     <div class="invoice-details">
-                        <div class="invoice-title">TAX INVOICE</div>
+                        <div class="invoice-title">ORDER INVOICE</div>
                         <div class="invoice-id">#${order.OrderID}</div>
                         <div class="invoice-meta">
                             <div>Date: ${formattedOrderDate}</div>
@@ -458,16 +458,8 @@ function printBill() {
                         <div class="info-title">Order Details</div>
                         <div class="info-content">
                             <div class="info-row">
-                                <span class="info-label">Order Source:</span>
-                                <span class="info-value">${order.OrderSource || 'Website'}</span>
-                            </div>
-                            <div class="info-row">
                                 <span class="info-label">Delivery Date:</span>
                                 <span class="info-value">${order.DeliveryDate || formattedOrderDate}</span>
-                            </div>
-                            <div class="info-row">
-                                <span class="info-label">Delivery Time:</span>
-                                <span class="info-value">${order.DeliveryTime || 'Anytime'}</span>
                             </div>
                             <div class="info-row">
                                 <span class="info-label">Payment Status:</span>
@@ -475,7 +467,6 @@ function printBill() {
                                     <span class="payment-status ${paymentClass}">
                                         ${paymentText}
                                     </span>
-                                    ${order.PaidTo ? ` (Paid to: ${order.PaidTo})` : ''}
                                 </span>
                             </div>
                         </div>
@@ -594,7 +585,7 @@ function printSimpleBill() {
     
     let billText = 'Traditionalzz Kuswar\n';
     billText += '====================\n\n';
-    billText += `Invoice #${order.OrderID}\n`;
+    billText += `Order #${order.OrderID}\n`;
     billText += `Date: ${new Date(order.OrderDate).toLocaleDateString()}\n`;
     billText += `Customer: ${order.CustomerName}\n`;
     billText += `Phone: ${order.Phone}\n\n`;
