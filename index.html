@@ -293,7 +293,7 @@
                 setTimeout(async () => {
                     try {
                         console.log('Trying to connect to backend...');
-                        const response = await fetch(`${CONFIG.API_BASE_URL}/api/products`, {
+                        const response = await fetch(`${CONFIG.API_BASE_URL}//api/products/by-category/all`, {
                             signal: AbortSignal.timeout(5000) // 5 second timeout
                         });
                         
@@ -331,8 +331,7 @@
                 // Try your API endpoints
                 const endpoints = [
                     '/api/products/grouped-by-category',
-                    '/api/products/by-category/all', 
-                    '/api/products'
+                    '/api/products/by-category/all'
                 ];
 
                 let data = null;
