@@ -33,7 +33,6 @@ function printBill() {
             minute: '2-digit'
         });
 
-        const logoPath = '/assets/logo.png'; 
         
         // --- Determine Payment Status Class ---
         let paymentClass = 'payment-unpaid';
@@ -415,7 +414,7 @@ function printBill() {
                 
                 <div class="invoice-header">
                     <div class="logo-section">
-                        <img src="${logoPath}" alt="Traditionalzz Kuswar Logo" class="logo" 
+                        <img src="joelserrao.github.io/Kuswar-Frontend/assets/logo.png" alt="Traditionalzz Kuswar Logo" class="logo" 
                             onerror="this.onerror=null; this.src='https://via.placeholder.com/200x60/4361ee/ffffff?text=Traditionalzz+Kuswar';">
                         <div class="business-name">Traditionalzz Kuswar</div>
                         <div class="business-tagline">Traditional Christmas Sweets & Gifts</div>
