@@ -293,7 +293,7 @@
                 setTimeout(async () => {
                     try {
                         console.log('Trying to connect to backend...');
-                        const response = await fetch(`${CONFIG.API_BASE_URL}//api/products/by-category/all`, {
+                        const response = await fetch(`${CONFIG.API_BASE_URL}/api/products/by-category/all`, {
                             signal: AbortSignal.timeout(5000) // 5 second timeout
                         });
                         
