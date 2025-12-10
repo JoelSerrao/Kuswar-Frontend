@@ -1201,130 +1201,147 @@
             showNotification(`Exported ${currentFilteredOrders.length} orders`, 'success');
         }
 
-// Export delivery list - One row per order(Instructions for delivery)
-function exportDelivery() {
-    if (currentFilteredOrders.length === 0) {
-        showNotification('No orders to export', 'warning');
-        return;
-    }
-    
-    // Filter for delivery orders
-    const deliveryOrders = currentFilteredOrders.filter(order => {
-        const status = order.DeliveryStatus || 'Pending';
-        return ['Pending', 'Ready', 'In Transit'].includes(status);
-    });
-    
-    if (deliveryOrders.length === 0) {
-        showNotification('No orders requiring delivery found', 'warning');
-        return;
-    }
-    
-    // Create CSV content for delivery (one row per order)
-    let csv = 'OrderID,OrderDate,DeliveryDate,DeliveryTime,CustomerName,Phone,City,Area,Address,OrderItems,Quantity,TotalAmount\n';
-    
-    deliveryOrders.forEach(order => {
-        const orderID = order.OrderID || '';
-        const orderDate = order.OrderDate || '';
-        const deliveryDate = order.DeliveryDate || order.OrderDate || '';
-        const deliveryTime = order.DeliveryTime || 'Anytime';
-        const customerName = order.CustomerName || '';
-        const phone = order.Phone || '';
-        const city = order.CustomerCity || '';
-        const area = order.CustomerArea || '';
-        const address = order.CustomerAddress || '';
-        const totalAmount = order.TotalAmount || 0;
-        
-        // Combine items into a single string
-        let orderItems = '';
-        let totalQuantity = 0;
-        
-        if (order.items && order.items.length > 0) {
-            orderItems = order.items.map(item => 
-                `${item.ProductName || 'Product'} (${item.Quantity || 1})`
-            ).join(', ');
+        // Export delivery list - One row per order (Instructions for delivery staff)
+        function exportDelivery() {
+            if (currentFilteredOrders.length === 0) {
+                showNotification('No orders to export', 'warning');
+                return;
+            }
             
-            totalQuantity = order.items.reduce((sum, item) => sum + (item.Quantity || 1), 0);
-        }
-        
-        csv += `"${orderID}","${orderDate}","${deliveryDate}","${deliveryTime}","${customerName}",`;
-        csv += `"${phone}","${city}","${area}","${address.replace(/"/g, '""')}","${orderItems}","${totalQuantity}","${totalAmount}"\n`;
-    });
-    
-    // Create download link
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `delivery_list_${new Date().toISOString().split('T')[0]}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    window.URL.revokeObjectURL(url);
-    
-    showNotification(`Exported ${deliveryOrders.length} orders for delivery`, 'success');
-}
-
-// Export order preparation list - One row per order
-function exportOrderPrep() {
-    if (currentFilteredOrders.length === 0) {
-        showNotification('No orders to export', 'warning');
-        return;
-    }
-    
-    // Filter for orders that need preparation
-    const prepOrders = currentFilteredOrders.filter(order => {
-        const status = order.DeliveryStatus || 'Pending';
-        return ['Pending', 'Ready'].includes(status);
-    });
-    
-    if (prepOrders.length === 0) {
-        showNotification('No orders requiring preparation found', 'warning');
-        return;
-    }
-    
-    // Create CSV content for order prep (one row per order)(Intsructions for inventory staff)
-    let csv = 'OrderID,CustomerName,Phone,OrderItems,Quantity,Instructions,DeliveryTime\n';
-    
-    prepOrders.forEach(order => {
-        const orderID = order.OrderID || '';
-        const customerName = order.CustomerName || '';
-        const phone = order.Phone || '';
-        const instructions = order.notes || '';
-        const deliveryTime = order.DeliveryTime || '';
-        
-        // Combine items into a single string
-        let orderItems = '';
-        let totalQuantity = 0;
-        
-        if (order.items && order.items.length > 0) {
-            // Format items for easy reading in kitchen
-            orderItems = order.items.map(item => {
-                const quantity = item.Quantity || 1;
-                const productName = item.ProductName || 'Product';
+            // Filter for delivery orders
+            const deliveryOrders = currentFilteredOrders.filter(order => {
+                const status = order.DeliveryStatus || 'Pending';
+                return ['Pending', 'Ready', 'In Transit'].includes(status);
+            });
+            
+            if (deliveryOrders.length === 0) {
+                showNotification('No orders requiring delivery found', 'warning');
+                return;
+            }
+            
+            // Create CSV content for delivery (one row per order)
+            let csv = 'OrderID,OrderDate,DeliveryDate,DeliveryTime,CustomerName,Phone,City,Area,Address,OrderItems,Quantity,TotalAmount\n';
+            
+            deliveryOrders.forEach(order => {
+                const orderID = order.OrderID || '';
+                const orderDate = order.OrderDate || '';
+                const deliveryDate = order.DeliveryDate || order.OrderDate || '';
+                const deliveryTime = order.DeliveryTime || 'Anytime';
+                const customerName = order.CustomerName || '';
+                const phone = order.Phone || '';
+                const city = order.CustomerCity || '';
+                const area = order.CustomerArea || '';
+                const address = order.CustomerAddress || '';
+                const totalAmount = order.TotalAmount || 0;
                 
-                // Add quantity to product name for clarity
-                return `${quantity} × ${productName}`;
-            }).join(' | ');
+                // Combine items into a single string
+                let orderItems = '';
+                let totalQuantity = 0;
+                
+                if (order.items && order.items.length > 0) {
+                    orderItems = order.items.map(item => 
+                        `${item.ProductName || 'Product'} (${item.Quantity || 1})`
+                    ).join(', ');
+                    
+                    totalQuantity = order.items.reduce((sum, item) => sum + (item.Quantity || 1), 0);
+                }
+                
+                csv += `"${orderID}","${orderDate}","${deliveryDate}","${deliveryTime}","${customerName}",`;
+                csv += `"${phone}","${city}","${area}","${address.replace(/"/g, '""')}","${orderItems}","${totalQuantity}","${totalAmount}"\n`;
+            });
             
-            totalQuantity = order.items.reduce((sum, item) => sum + (item.Quantity || 1), 0);
+            // Create download link
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `delivery_list_${new Date().toISOString().split('T')[0]}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+            
+            showNotification(`Exported ${deliveryOrders.length} orders for delivery`, 'success');
         }
         
-        csv += `"${orderID}","${customerName}","${phone}","${orderItems}","${totalQuantity}","${instructions.replace(/"/g, '""')}","${deliveryTime}"\n`;
-    });
-    
-    // Create download link
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `order_prep_${new Date().toISOString().split('T')[0]}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    window.URL.revokeObjectURL(url);
-    
-    showNotification(`Exported ${prepOrders.length} orders for preparation`, 'success');
-}
+        // Export order preparation list - One row per order (Intsructions for inventory staff)
+        function exportOrderPrep() {
+            if (currentFilteredOrders.length === 0) {
+                showNotification('No orders to export', 'warning');
+                return;
+            }
+            
+            // Filter for orders that need preparation
+            const prepOrders = currentFilteredOrders.filter(order => {
+                const status = order.DeliveryStatus || 'Pending';
+                return ['Pending', 'Ready'].includes(status);
+            });
+            
+            if (prepOrders.length === 0) {
+                showNotification('No orders requiring preparation found', 'warning');
+                return;
+            }
+            
+            // Create CSV content for order prep (one row per order)
+            let csv = 'OrderID,CustomerName,Phone,OrderItems,Quantity,Instructions,DeliveryTime\n';
+            
+            prepOrders.forEach(order => {
+                const orderID = order.OrderID || '';
+                const customerName = order.CustomerName || '';
+                const phone = order.Phone || '';
+                const instructions = order.notes || '';
+                const deliveryTime = order.DeliveryTime || '';
+                
+                // Combine items into a single string
+                let orderItems = '';
+                let totalQuantity = 0;
+                
+                if (order.items && order.items.length > 0) {
+                    // Format items for easy reading in kitchen
+                    orderItems = order.items.map(item => {
+                        const quantity = item.Quantity || 1;
+                        const productName = item.ProductName || 'Product';
+                        
+                        // Add quantity to product name for clarity
+                        return `${quantity} × ${productName}`;
+                    }).join(' | ');
+                    
+                    totalQuantity = order.items.reduce((sum, item) => sum + (item.Quantity || 1), 0);
+                }
+                
+                csv += `"${orderID}","${customerName}","${phone}","${orderItems}","${totalQuantity}","${instructions.replace(/"/g, '""')}","${deliveryTime}"\n`;
+            });
+            
+            // Create download link
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `order_prep_${new Date().toISOString().split('T')[0]}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+            
+            showNotification(`Exported ${prepOrders.length} orders for preparation`, 'success');
+        }
+
+        // Show loading state
+        function showLoading(isLoading) {
+            const ordersTable = document.getElementById('ordersTable');
+            if (isLoading) {
+                ordersTable.innerHTML = `
+                    <tr>
+                        <td colspan="8" class="text-center py-5">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <p class="mt-2">Loading orders...</p>
+                        </td>
+                    </tr>
+                `;
+            }
+        }
 
         // Show notification
         function showNotification(message, type = 'info') {
