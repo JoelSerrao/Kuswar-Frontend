@@ -135,7 +135,7 @@ function printBill() {
                     font-weight: 700;
                     color: #2c3e50;
                     margin-bottom: 2px;
-                    margin-top: -10px;
+                    margin-top: 2px;
                 }
                 
                 .business-tagline {
