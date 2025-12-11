@@ -489,10 +489,10 @@ function printBill() {
                 </table>
                 
                 <div class="totals-section">
-                    <div class="total-row">
-                        <span class="total-label">Subtotal</span>
-                        <span class="total-value">₹${subtotal.toFixed(2)}</span>
-                    </div>
+                    // <div class="total-row">
+                    //     <span class="total-label">Subtotal</span>
+                    //     <span class="total-value">₹${subtotal.toFixed(2)}</span>
+                    // </div>
                     
                     ${gstRate > 0 ? `
                     <div class="total-row">
