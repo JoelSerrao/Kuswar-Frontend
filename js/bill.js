@@ -141,7 +141,7 @@ function printBill() {
                 
                 .invoice-details {
                     text-align: right;
-                    background: linear-gradient(135deg, #4361ee 0%, #3a0ca3 100%);
+                    background: linear-gradient(135deg, #fe0000 0%, #792f2d 100%);
                     color: white;
                     padding: 20px;
                     border-radius: 8px;
@@ -177,13 +177,13 @@ function printBill() {
                     background: #f8f9fa;
                     padding: 20px;
                     border-radius: 8px;
-                    border-left: 4px solid #4361ee;
+                    border-left: 4px solid #fe0000;
                 }
                 
                 .info-title {
                     font-size: 16px;
                     font-weight: 600;
-                    color: #4361ee;
+                    color: #fe0000;
                     margin-bottom: 10px;
                     text-transform: uppercase;
                     letter-spacing: 0.5px;
@@ -216,7 +216,7 @@ function printBill() {
                 }
                 
                 .items-table thead {
-                    background: linear-gradient(135deg, #4361ee 0%, #3a0ca3 100%);
+                    background: linear-gradient(135deg, #fe0000 0%, #792f2d 100%);
                     color: white;
                 }
                 
@@ -298,12 +298,12 @@ function printBill() {
                 .grand-total {
                     font-size: 20px;
                     font-weight: 600;
-                    color: #4361ee;
+                    color: #fe0000;
                 }
                 
                 .grand-total .total-value {
                     font-size: 20px;
-                    color: #4361ee;
+                    color: #fe0000;
                 }
                 
                 .payment-status {
@@ -367,7 +367,7 @@ function printBill() {
                 
                 .thank-you {
                     font-size: 16px;
-                    color: #4361ee;
+                    color: #fe0000;
                     font-weight: 500;
                     margin-top: 10px;
                 }
@@ -489,10 +489,10 @@ function printBill() {
                 </table>
                 
                 <div class="totals-section">
-                    // <div class="total-row">
-                    //     <span class="total-label">Subtotal</span>
-                    //     <span class="total-value">₹${subtotal.toFixed(2)}</span>
-                    // </div>
+                     <!-- <div class="total-row"> -->
+                         <!-- <span class="total-label">Subtotal</span> -->
+                         <!-- <span class="total-value">₹${subtotal.toFixed(2)}</span> -->
+                     <!--</div>-->
                     
                     ${gstRate > 0 ? `
                     <div class="total-row">
