@@ -126,7 +126,7 @@ function printBill() {
                 .logo {
                     max-width: 200px;
                     height: auto;
-                    margin-bottom: 5px;
+                    /* margin-bottom: 5px; */
                 }
                 
                 .business-name {
@@ -134,7 +134,7 @@ function printBill() {
                     font-weight: 700;
                     color: #2c3e50;
                     margin-bottom: 2px;
-                    margin-top: -5px;
+                    /* margin-top: -5px; */
                 }
                 
                 .business-tagline {
