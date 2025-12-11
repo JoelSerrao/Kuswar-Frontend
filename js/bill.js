@@ -93,7 +93,7 @@ function printBill() {
                     line-height: 1.6;
                     color: #333;
                     background-color: #fff;
-                    padding: 20px;
+                    padding: 10px;
                     max-width: 800px;
                     margin: 0 auto;
                 }
@@ -102,7 +102,7 @@ function printBill() {
                     background: white;
                     border-radius: 12px;
                     box-shadow: 0 0 30px rgba(0,0,0,0.1);
-                    padding: 40px;
+                    padding: 30px;
                     position: relative;
                     overflow: hidden;
                 }
@@ -111,9 +111,9 @@ function printBill() {
                     display: flex;
                     justify-content: space-between;
                     align-items: flex-start;
-                    margin-bottom: 40px;
+                    margin-bottom: 30px;
                     border-bottom: 2px solid #f0f0f0;
-                    padding-bottom: 30px;
+                    padding-bottom: 20px;
                 }
                 
                 .logo-section {
@@ -126,7 +126,8 @@ function printBill() {
                 .logo {
                     max-width: 200px;
                     height: auto;
-                    /* margin-bottom: 5px; */
+                    margin-bottom: 0px;
+                    magin-top: -10px;
                 }
                 
                 .business-name {
@@ -134,7 +135,7 @@ function printBill() {
                     font-weight: 700;
                     color: #2c3e50;
                     margin-bottom: 2px;
-                    /* margin-top: -5px; */
+                    margin-top: -10px;
                 }
                 
                 .business-tagline {
