@@ -118,25 +118,30 @@ function printBill() {
                 
                 .logo-section {
                     flex: 1;
+                    display: flex;
+                    flex-direction: column;
+                    align-item: flex-start;
                 }
                 
                 .logo {
                     max-width: 200px;
                     height: auto;
-                    margin-bottom: 10px;
+                    margin-bottom: 5px;
                 }
                 
                 .business-name {
                     font-size: 28px;
                     font-weight: 700;
                     color: #2c3e50;
-                    margin-bottom: 5px;
+                    margin-bottom: 2px;
+                    margin-top: -5px;
                 }
                 
                 .business-tagline {
                     color: #7f8c8d;
                     font-size: 14px;
                     font-weight: 400;
+                    margin-bottom: 0;
                 }
                 
                 .invoice-details {
