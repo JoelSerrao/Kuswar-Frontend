@@ -100,9 +100,9 @@ function printBill() {
                 
                 .invoice-container {
                     background: white;
-                    border-radius: 12px;
+                    border-radius: 10px;
                     box-shadow: 0 0 30px rgba(0,0,0,0.1);
-                    padding: 30px;
+                    padding: 10px;
                     position: relative;
                     overflow: hidden;
                 }
@@ -111,9 +111,9 @@ function printBill() {
                     display: flex;
                     justify-content: space-between;
                     align-items: flex-start;
-                    margin-bottom: 30px;
+                    margin-bottom: 20px;
                     border-bottom: 2px solid #f0f0f0;
-                    padding-bottom: 20px;
+                    padding-bottom: 10px;
                 }
                 
                 .logo-section {
@@ -149,7 +149,7 @@ function printBill() {
                     text-align: right;
                     background: linear-gradient(135deg, #fe0000 0%, #792f2d 100%);
                     color: white;
-                    padding: 20px;
+                    padding: 10px;
                     border-radius: 8px;
                     min-width: 300px;
                 }
@@ -157,13 +157,13 @@ function printBill() {
                 .invoice-title {
                     font-size: 24px;
                     font-weight: 600;
-                    margin-bottom: 15px;
+                    margin-bottom: 8px;
                 }
                 
                 .invoice-id {
                     font-size: 20px;
                     font-weight: 500;
-                    margin-bottom: 10px;
+                    margin-bottom: 3px;
                     color: #fff;
                 }
                 
@@ -175,13 +175,13 @@ function printBill() {
                 .info-section {
                     display: grid;
                     grid-template-columns: 1fr 1fr;
-                    gap: 40px;
-                    margin-bottom: 40px;
+                    gap: 20px;
+                    margin-bottom: 20px;
                 }
                 
                 .info-box {
                     background: #f8f9fa;
-                    padding: 20px;
+                    padding: 10px;
                     border-radius: 8px;
                     border-left: 4px solid #fe0000;
                 }
@@ -190,7 +190,7 @@ function printBill() {
                     font-size: 16px;
                     font-weight: 600;
                     color: #fe0000;
-                    margin-bottom: 10px;
+                    margin-bottom: 5px;
                     text-transform: uppercase;
                     letter-spacing: 0.5px;
                 }
@@ -217,7 +217,7 @@ function printBill() {
                 .items-table {
                     width: 100%;
                     border-collapse: collapse;
-                    margin-bottom: 40px;
+                    margin-bottom: 20px;
                     box-shadow: 0 2px 10px rgba(0,0,0,0.05);
                 }
                 
