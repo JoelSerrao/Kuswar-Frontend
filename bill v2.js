@@ -558,26 +558,63 @@ function printBill() {
                 </div>
             </div>
             
-            <script>
-                // Auto-print when the page loads
-                window.onload = function() {
-                    setTimeout(function() {
-                        window.print();
+                <script>
+                    // Try to load logo from parent window
+                    function loadLogo() {
+                        const logoImg = document.querySelector('.logo');
+                        if (logoImg) {
+                            // Try multiple paths
+                            const paths = [
+                                '../assets/logo.png',
+                                'assets/logo.png',
+                                '/assets/logo.png',
+                                window.location.origin + '/assets/logo.png',
+                                window.opener?.location?.origin + '/assets/logo.png' // From parent window
+                            ];
                         
-                        // Optional: Close window after printing 
-                        // setTimeout(function() {
-                        //     window.close();
-                        // }, 1000);
-                    }, 500);
-                };
-                
-                // Also allow manual print with Ctrl+P
-                document.addEventListener('keydown', function(e) {
-                    if (e.ctrlKey && e.key === 'p') {
-                        e.preventDefault();
-                        window.print();
+                            let currentIndex = 0;
+                        
+                            function tryNextPath() {
+                                if (currentIndex >= paths.length) {
+                                    // All paths failed, show text logo
+                                    logoImg.style.display = 'none';
+                                    const textLogo = document.getElementById('text-logo');
+                                    if (textLogo) {
+                                        textLogo.style.display = 'block';
+                                    }
+                                    return;
+                                }
+                        
+                                const testImg = new Image();
+                                testImg.onload = function() {
+                                    logoImg.src = paths[currentIndex];
+                                };
+                                testImg.onerror = function() {
+                                    currentIndex++;
+                                    tryNextPath();
+                                };
+                                testImg.src = paths[currentIndex];
+                            }
+                        
+                            tryNextPath();
+                        }
                     }
-                });
+                        
+                    window.onload = function() {
+                        loadLogo();
+                        setTimeout(function() {
+                            window.print();
+                        }, 1000); // Give time for logo to load
+                    };
+                        
+                    // Also allow manual print with Ctrl+P
+                    document.addEventListener('keydown', function(e) {
+                        if (e.ctrlKey && e.key === 'p') {
+                            e.preventDefault();
+                            window.print();
+                        }
+                    });
+
             </script>
         </body>
         </html>
