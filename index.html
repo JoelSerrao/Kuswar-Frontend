@@ -440,62 +440,56 @@
                 const productId = product.ProductID;
                 const productName = product.ProductName;
                 const price = product.UnitPrice || 0;
-                const stock = product.Stock || 0;
                 
                 const cartQuantity = cart[productId] ? cart[productId].quantity : 0;
                 
                 const productRow = document.createElement('div');
                 productRow.className = 'product-row-horizontal mb-2';
                 
-            productRow.innerHTML = `
-                <div class="card border shadow-sm mb-2">
-                    <div class="card-body p-2">
-                        <div class="d-flex flex-column flex-sm-row align-items-sm-center gap-2">
-                        
-                            <div class="product-name flex-grow-1 mb-1 mb-sm-0">
-                                <span class="fw-medium text-break">${productName}</span>
-                            </div>
-                        
-                            <div class="d-flex align-items-center justify-content-between w-100 w-sm-auto gap-3">
+                productRow.innerHTML = `
+                    <div class="card border shadow-sm mb-2">
+                        <div class="card-body p-2">
+                            <div class="d-flex flex-column flex-sm-row align-items-sm-center gap-2">
                             
-                                <div class="quantity-controls d-flex align-items-center">
-                                    <button class="btn btn-outline-primary btn-sm px-2" type="button" 
-                                            onclick="handleMinusButton('${productId}')"
-                                            ${cartQuantity <= 0 ? 'disabled' : ''}
-                                            style="min-width: 32px;">
-                                        <i class="fas fa-minus"></i>
-                                    </button>
-                                    
-                                    <input type="number" 
-                                           class="form-control form-control-sm text-center mx-1" 
-                                           data-product-id="${productId}"
-                                           value="${cartQuantity}"
-                                           min="0" step="1"
-                                           onchange="updateQuantityFromInput('${productId}', this.value)"
-                                           oninput="validateDecimalInput(this, ${stock})"
-                                           style="width: 60px;"> <button class="btn btn-outline-primary btn-sm px-2" type="button" 
-                                            onclick="handlePlusButton('${productId}')"
-                                            ${stock === 0 ? 'disabled' : ''}
-                                            style="min-width: 32px;">
-                                        <i class="fas fa-plus"></i>
-                                    </button>
+                                <div class="product-name flex-grow-1 mb-1 mb-sm-0">
+                                    <span class="fw-medium text-break">${productName}</span>
                                 </div>
                             
-                                <div class="d-flex align-items-center gap-3">
-                                    <span class="fw-bold text-primary text-nowrap" style="font-size: 10px;">₹${price}</span>
-                                    
-                                    <span class="badge ${stock > 0 ? 'bg-light text-dark border' : 'bg-danger'}">
-                                        ${stock > 0 ? stock : 'Out'}
-                                    </span>
+                                <div class="d-flex align-items-center justify-content-between w-100 w-sm-auto gap-3">
+                                
+                                    <div class="quantity-controls d-flex align-items-center">
+                                        <button class="btn btn-outline-primary btn-sm px-2" type="button" 
+                                                onclick="handleMinusButton('${productId}')"
+                                                ${cartQuantity <= 0 ? 'disabled' : ''}
+                                                style="min-width: 32px;">
+                                            <i class="fas fa-minus"></i>
+                                        </button>
+                                        
+                                        <input type="number" 
+                                               class="form-control form-control-sm text-center mx-1" 
+                                               data-product-id="${productId}"
+                                               value="${cartQuantity}"
+                                               min="0" step="1"
+                                               onchange="updateQuantityFromInput('${productId}', this.value)"
+                                               oninput="validateDecimalInput(this)"
+                                               style="width: 60px;">
+                                        <button class="btn btn-outline-primary btn-sm px-2" type="button" 
+                                                onclick="handlePlusButton('${productId}')"
+                                                style="min-width: 32px;">
+                                            <i class="fas fa-plus"></i>
+                                        </button>
+                                    </div>
+                                
+                                    <div class="d-flex align-items-center gap-3">
+                                        <span class="fw-bold text-primary text-nowrap" style="font-size: 10px;">₹${price}</span>
+                                    </div>
                                 </div>
-                            
                             </div>
                         </div>
                     </div>
-                </div>
-            `;
-            
-            container.appendChild(productRow);
+                `;
+                
+                container.appendChild(productRow);
             });
         }
 
@@ -567,7 +561,7 @@
         }
 
         // Validate decimal input
-        function validateDecimalInput(input, maxStock) {
+        function validateDecimalInput(input) {
             let value = input.value;
             
             // Allow empty input
@@ -580,13 +574,6 @@
             if (isNaN(numValue) || numValue < 0) {
                 input.value = '0';
                 return;
-            }
-            
-            // Check if exceeds stock
-            if (maxStock > 0 && numValue > maxStock) {
-                numValue = maxStock;
-                input.value = numValue;
-                showNotification(`Maximum stock: ${maxStock}`, 'warning');
             }
             
             // Round to 2 decimal places

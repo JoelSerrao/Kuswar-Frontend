@@ -536,45 +536,8 @@
                     }, 2500);
                     
                 } else {
-                    // Handle stock errors or other errors
-                    if (result.insufficient_items) {
-                        // Build simple error message using \n for line breaks in the notification
-                        let errorMessage = 'Insufficient stock for the following items:\n';
-                        result.insufficient_items.forEach((item, index) => {
-                            errorMessage += `${item.product}: Requested ${item.requested}, Available ${item.available}`;
-                            if (index < result.insufficient_items.length - 1) {
-                                errorMessage += '\n';
-                            }
-                        });
-                        
-                        // Use showNotification with the plain string
-                        showNotification(errorMessage, 'warning', 10000); // Show for 10 seconds
-                        
-                        // Update cart with available quantities
-                        result.insufficient_items.forEach(item => {
-                            // Find the cart item and update its quantity to available
-                            const cartItem = Object.values(cart).find(cartItem => 
-                                cartItem.name === item.product || cartItem.id === item.product
-                            );
-                            
-                            if (cartItem && item.available > 0) {
-                                // Update quantity to available stock
-                                cartItem.quantity = item.available;
-                            } else if (cartItem && item.available <= 0) {
-                                // Remove item if no stock
-                                delete cart[cartItem.id];
-                            }
-                        });
-                        
-                        // Update localStorage and UI
-                        localStorage.setItem('checkout_cart', JSON.stringify(cart));
-                        loadOrderSummary();
-                        calculateOrderTotal();
-                        
-                    } else {
-                        // Handle other errors
-                        throw new Error(result.error || 'Failed to place order');
-                    }
+                    // Handle other errors
+                    throw new Error(result.error || 'Failed to place order');
                 }
                 
                 // Reset button
