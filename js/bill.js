@@ -549,11 +549,11 @@ function printBill() {
                     setTimeout(function() {
                         window.print();
                         
-                        // Optional: Close window after printing 
-                        // setTimeout(function() {
-                        //     window.close();
-                        // }, 1000);
-                    }, 500);
+                        Optional: Close window after printing 
+                        setTimeout(function() {
+                            window.close();
+                        }, 1000);
+                    }, 2000);
                 };
                 
                 // Also allow manual print with Ctrl+P
