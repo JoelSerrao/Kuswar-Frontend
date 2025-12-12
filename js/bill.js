@@ -127,7 +127,7 @@ function printBill() {
                     max-width: 200px;
                     height: auto;
                     margin-bottom: 0px;
-                    magin-top: -10px;
+                    magin-top: 2px;
                 }
                 
                 .business-name {
@@ -274,7 +274,7 @@ function printBill() {
                     background: #f8f9fa;
                     border-radius: 8px;
                     padding: 15px;
-                    margin-bottom: 20px;
+                    margin-bottom: 10px;
                     max-width: 350px; /* Constrain width for totals */
                     margin-left: auto; /* Align to the right */
                 }
@@ -512,15 +512,6 @@ function printBill() {
                         <span class="total-value">₹${totalWithGST.toFixed(2)}</span>
                     </div>
                 </div>
-                
-                ${
-                    order.notes ? `
-                    <div class="notes-section">
-                        <div class="notes-title">Special Instructions</div>
-                        <div class="notes-content">${order.notes}</div>
-                    </div>
-                    ` : ''
-                }
                 
                 <div class="footer">
                     <p>Thank you for your business!</p>
