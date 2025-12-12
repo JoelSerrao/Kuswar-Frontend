@@ -273,8 +273,8 @@ function printBill() {
                 .totals-section {
                     background: #f8f9fa;
                     border-radius: 8px;
-                    padding: 25px;
-                    margin-bottom: 40px;
+                    padding: 15px;
+                    margin-bottom: 20px;
                     max-width: 350px; /* Constrain width for totals */
                     margin-left: auto; /* Align to the right */
                 }
