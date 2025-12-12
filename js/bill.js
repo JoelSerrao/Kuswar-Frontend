@@ -43,7 +43,7 @@ async function printBill() {
             minute: '2-digit'
         });
 
-      const logoPath = '/assets/logo.png';
+      const logoPath = '/Kuswar-Frontend/assets/logo.png';
 
         const possiblePaths = [
         '../assets/logo.png',
