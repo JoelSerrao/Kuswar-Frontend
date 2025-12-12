@@ -217,7 +217,7 @@ function printBill() {
                 .items-table {
                     width: 100%;
                     border-collapse: collapse;
-                    margin-bottom: 20px;
+                    margin-bottom: 10px;
                     box-shadow: 0 2px 10px rgba(0,0,0,0.05);
                 }
                 
@@ -283,7 +283,7 @@ function printBill() {
                     display: flex;
                     justify-content: space-between;
                     align-items: center;
-                    padding: 10px 0;
+                    padding: 10px;
                     border-bottom: 1px dashed #ddd;
                 }
                 
@@ -315,7 +315,7 @@ function printBill() {
                 .payment-status {
                     display: inline-block;
                     padding: 6px 12px;
-                    border-radius: 20px;
+                    border-radius: 10px;
                     font-size: 12px;
                     font-weight: 500;
                     text-transform: uppercase;
@@ -361,7 +361,7 @@ function printBill() {
                 
                 .footer {
                     text-align: center;
-                    padding: 30px 0;
+                    padding: 20px 0;
                     border-top: 2px solid #f0f0f0;
                     color: #7f8c8d;
                     font-size: 13px;
@@ -375,7 +375,7 @@ function printBill() {
                     font-size: 16px;
                     color: #fe0000;
                     font-weight: 500;
-                    margin-top: 10px;
+                    margin-top: 5px;
                 }
                 
                 .print-only {
