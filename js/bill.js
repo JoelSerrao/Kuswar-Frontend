@@ -1,5 +1,15 @@
+// Add this helper function
+function testLogoPath(path) {
+    return new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => resolve(true);
+        img.onerror = () => resolve(false);
+        img.src = path;
+    });
+}
+
 // Print Big beautiful bill
-function printBill() {
+async function printBill() {
     const order = window.currentOrder;
     if (!order) {
         showNotification('No order selected', 'warning');
@@ -34,6 +44,27 @@ function printBill() {
         });
 
       const logoPath = '/assets/logo.png';
+
+        const possiblePaths = [
+        '../assets/logo.png',
+        'assets/logo.png',
+        '/assets/logo.png',
+        window.location.origin + '/assets/logo.png'
+    ];
+    
+    let foundLogoPath = null;
+    for (const path of possiblePaths) {
+        const exists = await testLogoPath(path);
+        if (exists) {
+            foundLogoPath = path;
+            break;
+        }
+    }
+    
+    if (!foundLogoPath) {
+        // Use placeholder or text
+        foundLogoPath = 'https://via.placeholder.com/200x60/4361ee/ffffff?text=Traditionalzz+Kuswar';
+    }
         
         // --- Determine Payment Status Class ---
         let paymentClass = 'payment-unpaid';
