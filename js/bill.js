@@ -399,6 +399,14 @@ function printBill() {
                     .print-only {
                         display: block; /* Show only when printing */
                     }
+                        
+                    .invoice-details, 
+                    .items-table thead {
+                        /* Standard property */
+                        print-color-adjust: exact; 
+                        /* WebKit-specific property (Chrome, Safari) */
+                        -webkit-print-color-adjust: exact;
+                    }
                 }
                 
                 .watermark {
