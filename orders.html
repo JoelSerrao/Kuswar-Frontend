@@ -1095,57 +1095,6 @@
             }
         }
 
-        // Print bill - NEW FUNCTION
-        function printBill() {
-            const order = window.currentOrder;
-            if (!order) {
-                showNotification('No order selected', 'warning');
-                return;
-            }
-            
-            // Create a simple bill
-            let billContent = `
-                Traditionalzz Kuswar
-                ====================
-                Order ID: ${order.OrderID}
-                Date: ${new Date().toLocaleDateString()}
-                Time: ${new Date().toLocaleTimeString()}
-                
-                Customer: ${order.CustomerName}
-                Phone: ${order.Phone}
-                Address: ${order.CustomerAddress || 'N/A'}
-                
-                Items:
-                ------`;
-            
-            if (order.items && order.items.length > 0) {
-                order.items.forEach((item, index) => {
-                    billContent += `
-                ${index + 1}. ${item.ProductName} x${item.Quantity} @ ₹${item.UnitPrice} = ₹${item.Quantity * item.UnitPrice}`;
-                });
-            }
-            
-            billContent += `
-                
-                Total: ₹${order.TotalAmount}
-                Payment: ${order.PaymentStatus}
-                ${order.PaidTo ? `Received by: ${order.PaidTo}` : ''}
-                
-                Thank you for your order!`;
-            
-            // Open in new window and print
-            const billWindow = window.open('', '_blank', 'width=600,height=800');
-            billWindow.document.write('<pre>' + billContent + '</pre>');
-            billWindow.document.close();
-            billWindow.print();
-            
-            // Close modal
-            const modal = bootstrap.Modal.getInstance(document.getElementById('orderDetailsModal'));
-            if (modal) {
-                modal.hide();
-            }
-        }
-
         // Print order details
         function printOrderDetails() {
             const printContent = document.getElementById('orderDetailsContent').innerHTML;
@@ -1392,6 +1341,6 @@
         window.exportDelivery = exportDelivery;
         window.exportOrderPrep = exportOrderPrep; 
     </script>
-    <script src="bill v2.js"></script>
+    <script src="js/bill.js"></script>
 </body>
 </html>

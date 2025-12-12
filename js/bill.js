@@ -1,15 +1,5 @@
-// Add this helper function
-function testLogoPath(path) {
-    return new Promise((resolve) => {
-        const img = new Image();
-        img.onload = () => resolve(true);
-        img.onerror = () => resolve(false);
-        img.src = path;
-    });
-}
-
 // Print Big beautiful bill
-async function printBill() {
+function printBill() {
     const order = window.currentOrder;
     if (!order) {
         showNotification('No order selected', 'warning');
@@ -17,6 +7,23 @@ async function printBill() {
     }
     
     try {
+        // Get current URL and construct absolute path to logo
+        const currentUrl = window.location.href;
+        const baseUrl = currentUrl.substring(0, currentUrl.lastIndexOf('/') + 1);
+        let logoPath;
+        
+        // Try multiple possible paths
+        if (currentUrl.includes('github.io') || currentUrl.includes('github')) {
+            // GitHub Pages deployment
+            logoPath = baseUrl + 'assets/logo.png';
+        } else if (currentUrl.includes('localhost') || currentUrl.includes('127.0.0.1')) {
+            // Local development
+            logoPath = '../assets/logo.png';
+        } else {
+            // Production/other hosting
+            const domain = window.location.origin;
+            logoPath = domain + '/assets/logo.png';
+        }
         // Format dates
         const orderDate = new Date(order.OrderDate);
         const formattedOrderDate = orderDate.toLocaleDateString('en-IN', {
@@ -42,30 +49,7 @@ async function printBill() {
             hour: '2-digit',
             minute: '2-digit'
         });
-
-      const logoPath = '/Kuswar-Frontend/assets/logo.png';
-
-        const possiblePaths = [
-        '../assets/logo.png',
-        'assets/logo.png',
-        '/assets/logo.png',
-        window.location.origin + '/assets/logo.png'
-    ];
-    
-    let foundLogoPath = null;
-    for (const path of possiblePaths) {
-        const exists = await testLogoPath(path);
-        if (exists) {
-            foundLogoPath = path;
-            break;
-        }
-    }
-    
-    if (!foundLogoPath) {
-        // Use placeholder or text
-        foundLogoPath = 'https://via.placeholder.com/200x60/4361ee/ffffff?text=Traditionalzz+Kuswar';
-    }
-        
+      
         // --- Determine Payment Status Class ---
         let paymentClass = 'payment-unpaid';
         let paymentText = order.PaymentStatus || 'Unpaid';
@@ -460,20 +444,20 @@ async function printBill() {
                 
                 <div class="invoice-header">
                     <div class="logo-section">
-                        <div id="logo-container" style="min-height: 60px;">
+                        <div class="logo-container" style="text-align: left; margin-bottom: 15px;">
                             <img src="${logoPath}" alt="Traditionalzz Kuswar Logo" class="logo" 
-                                 onerror="
-                                     this.style.display='none';
-                                     document.getElementById('logo-container').innerHTML = 
-                                         '<div style=\\'text-align: left;\\'>' +
-                                         '<div class=\\'business-name\\' style=\\'font-size: 24px; margin-bottom: 5px;\\'>Traditionalzz Kuswar</div>' +
-                                         '<div class=\\'business-tagline\\'>Traditional Christmas Sweets & Gifts</div>' +
-                                         '</div>';
-                                 "
-                                 style="max-width: 200px; height: auto; margin-bottom: 10px;">
+                                 onerror="this.onerror=null; this.style.display='none'; 
+                                 document.getElementById('text-logo').style.display='block';" 
+                                 style="max-width: 200px; height: auto;">
+                            <div id="text-logo" style="display: none;">
+                                <div class="business-name">Traditionalzz Kuswar</div>
+                                <div class="business-tagline">Traditional Christmas Sweets & Gifts</div>
+                            </div>
                         </div>
-                        <div class="business-name" style="display: none;">Traditionalzz Kuswar</div>
-                        <div class="business-tagline" style="display: none;">Traditional Christmas Sweets & Gifts</div>
+                        ${!logoPath.includes('placeholder') ? `
+                        <div class="business-name">Traditionalzz Kuswar</div>
+                        <div class="business-tagline">Traditional Christmas Sweets & Gifts</div>
+                        ` : ''}
                     </div>
                     
                     <div class="invoice-details">
@@ -574,26 +558,63 @@ async function printBill() {
                 </div>
             </div>
             
-            <script>
-                // Auto-print when the page loads
-                window.onload = function() {
-                    setTimeout(function() {
-                        window.print();
+                <script>
+                    // Try to load logo from parent window
+                    function loadLogo() {
+                        const logoImg = document.querySelector('.logo');
+                        if (logoImg) {
+                            // Try multiple paths
+                            const paths = [
+                                '../assets/logo.png',
+                                'assets/logo.png',
+                                '/assets/logo.png',
+                                window.location.origin + '/assets/logo.png',
+                                window.opener?.location?.origin + '/assets/logo.png' // From parent window
+                            ];
                         
-                        Optional: Close window after printing 
-                        setTimeout(function() {
-                            window.close();
-                        }, 1000);
-                    }, 2000);
-                };
-                
-                // Also allow manual print with Ctrl+P
-                document.addEventListener('keydown', function(e) {
-                    if (e.ctrlKey && e.key === 'p') {
-                        e.preventDefault();
-                        window.print();
+                            let currentIndex = 0;
+                        
+                            function tryNextPath() {
+                                if (currentIndex >= paths.length) {
+                                    // All paths failed, show text logo
+                                    logoImg.style.display = 'none';
+                                    const textLogo = document.getElementById('text-logo');
+                                    if (textLogo) {
+                                        textLogo.style.display = 'block';
+                                    }
+                                    return;
+                                }
+                        
+                                const testImg = new Image();
+                                testImg.onload = function() {
+                                    logoImg.src = paths[currentIndex];
+                                };
+                                testImg.onerror = function() {
+                                    currentIndex++;
+                                    tryNextPath();
+                                };
+                                testImg.src = paths[currentIndex];
+                            }
+                        
+                            tryNextPath();
+                        }
                     }
-                });
+                        
+                    window.onload = function() {
+                        loadLogo();
+                        setTimeout(function() {
+                            window.print();
+                        }, 1000); // Give time for logo to load
+                    };
+                        
+                    // Also allow manual print with Ctrl+P
+                    document.addEventListener('keydown', function(e) {
+                        if (e.ctrlKey && e.key === 'p') {
+                            e.preventDefault();
+                            window.print();
+                        }
+                    });
+
             </script>
         </body>
         </html>
